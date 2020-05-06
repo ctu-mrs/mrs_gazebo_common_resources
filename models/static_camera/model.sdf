@@ -1,0 +1,53 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="static_camera">
+	  <static>1</static>
+	  <link name="link">
+      <pose>0 0 0.1 0 0 0</pose>
+
+      <visual name="visual">
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.2</size>
+          </box>
+        </geometry>
+      </visual>
+
+     <sensor name='camera' type='camera'>
+       <camera name='__default__'>
+         <horizontal_fov>1.57</horizontal_fov>
+         <image>
+           <width>1920</width>
+           <height>1080</height>
+         </image>
+         <clip>
+           <near>0.1</near>
+           <far>100</far>
+         </clip>
+       </camera>
+       <plugin name="gazebo_ros_camera" filename="libgazebo_ros_camera.so">
+         <cameraName>camera</cameraName>
+         <alwaysOn>true</alwaysOn>
+         <updateRate>30</updateRate>
+         <imageTopicName>rgb/image_raw</imageTopicName>
+         <depthImageTopicName>depth/image_raw</depthImageTopicName>
+         <pointCloudTopicName>depth/points</pointCloudTopicName>
+         <cameraInfoTopicName>rgb/camera_info</cameraInfoTopicName>
+         <depthImageCameraInfoTopicName>depth/camera_info</depthImageCameraInfoTopicName>
+         <frameName>camera_depth_optical_frame</frameName>
+         <baseline>0.1</baseline>
+         <distortion_k1>0.0</distortion_k1>
+         <distortion_k2>0.0</distortion_k2>
+         <distortion_k3>0.0</distortion_k3>
+         <distortion_t1>0.0</distortion_t1>
+         <distortion_t2>0.0</distortion_t2>
+         <pointCloudCutoff>0.4</pointCloudCutoff>
+         <robotNamespace>/</robotNamespace>
+       </plugin>
+     </sensor>
+
+    </link>
+  </model>
+</sdf>
+
+

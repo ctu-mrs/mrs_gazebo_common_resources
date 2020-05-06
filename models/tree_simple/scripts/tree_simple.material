@@ -1,0 +1,39 @@
+    material TreeSimple/Trunk
+    {
+      technique
+      {
+        pass
+        {
+          ambient 0.5 0.5 0.5 1.0
+          diffuse 1.0 1.0 1.0 1.0
+          specular 0.0 0.0 0.0 1.0 0.5
+
+          texture_unit
+          {
+            texture tree_simple_trunk.jpg
+			filtering bilienear
+            scale 1.0 1.0
+          }
+        }
+      }
+    }
+    
+    material TreeSimple/Treetop
+    {
+      technique
+      {
+        pass
+        {
+          ambient 0.5 0.5 0.5 1.0
+          diffuse 1.0 1.0 1.0 1.0
+          specular 0.0 0.0 0.0 1.0 0.5
+
+          texture_unit
+          {
+            texture tree_simple_treetop.jpg
+			filtering bilienear
+            scale 1.0 1.0
+          }
+        }
+      }
+    }

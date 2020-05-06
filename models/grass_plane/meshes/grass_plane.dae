@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <asset><contributor><author></author><authoring_tool>FBX COLLADA exporter</authoring_tool><comments></comments></contributor><created>2019-11-19T14:05:56Z</created><keywords></keywords><modified>2019-11-19T14:05:56Z</modified><revision></revision><subject></subject><title></title><unit meter="0.001000" name="centimeter"></unit><up_axis>Z_UP</up_axis></asset>
+  <library_images>
+    <image id="Map #9-image" name="Map #9"><init_from>grass_seamless.jpg</init_from></image>
+  </library_images>
+  <library_materials>
+    <material id="_19 - Default" name="_19 - Default">
+      <instance_effect url="#_19 - Default-fx"/>
+    </material>
+  </library_materials>
+  <library_effects>
+    <effect id="_19 - Default-fx" name="_19 - Default">
+      <profile_COMMON>
+        <technique sid="standard">
+          <phong>
+            <emission>
+              <color sid="emission">0.0 0.0 0.0 1.0</color>
+            </emission>
+            <ambient>
+              <color sid="ambient">1.0 1.0 1.0 1.0</color>
+            </ambient>
+            <diffuse>
+              <texture texture="Map #9-image" texcoord="CHANNEL0">
+                <extra>
+                  <technique profile="MAYA">
+                    <wrapU sid="wrapU0">TRUE</wrapU>
+                    <wrapV sid="wrapV0">TRUE</wrapV>
+                    <blend_mode>ADD</blend_mode>
+                  </technique>
+                </extra>
+              </texture>
+            </diffuse>
+            <specular>
+              <color sid="specular">0.0 0.0 0.0 1.0</color>
+            </specular>
+            <shininess>
+              <float sid="shininess">2.0</float>
+            </shininess>
+            <reflective>
+              <color sid="reflective">0.0 0.0 0.0 1.0</color>
+            </reflective>
+            <reflectivity>
+              <float sid="reflectivity">1.0</float>
+            </reflectivity>
+            <transparent opaque="RGB_ZERO">
+              <color sid="transparent">1.0 1.0 1.0 1.0</color>
+            </transparent>
+            <transparency>
+              <float sid="transparency">0.0</float>
+            </transparency>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_geometries>
+    <geometry id="Plane002-lib" name="Plane002Mesh">
+      <mesh>
+        <source id="Plane002-POSITION">
+          <float_array id="Plane002-POSITION-array" count="12">
+-125000.0 -125000.0 0.0
+125000.0 -125000.0 0.0
+-125000.0 125000.0 0.0
+125000.0 125000.0 0.0
+</float_array>
+          <technique_common>
+            <accessor source="#Plane002-POSITION-array" count="4" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Plane002-Normal0">
+          <float_array id="Plane002-Normal0-array" count="18">
+0.0 0.0 1.0
+0.0 0.0 1.0
+0.0 0.0 1.0
+0.0 0.0 1.0
+0.0 0.0 1.0
+0.0 0.0 1.0
+</float_array>
+          <technique_common>
+            <accessor source="#Plane002-Normal0-array" count="6" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Plane002-UV0">
+          <float_array id="Plane002-UV0-array" count="8">
+0.0 0.0
+90.0 0.0
+0.0 90.0
+90.0 90.0
+</float_array>
+          <technique_common>
+            <accessor source="#Plane002-UV0-array" count="4" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Plane002-VERTEX">
+          <input semantic="POSITION" source="#Plane002-POSITION"/>
+        </vertices>
+        <triangles count="2" material="_19 - Default"><input semantic="VERTEX" offset="0" source="#Plane002-VERTEX"/><input semantic="NORMAL" offset="1" source="#Plane002-Normal0"/><input semantic="TEXCOORD" offset="2" set="0" source="#Plane002-UV0"/><p> 3 0 3 2 1 2 0 2 0 3 3 3 0 4 0 1 5 1</p></triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_lights>
+    <light id="SceneAmbient" name="SceneAmbient">
+      <technique_common>
+        <ambient>
+          <color>0.176471 0.176471 0.176471</color>
+        </ambient>
+      </technique_common>
+    </light>
+  </library_lights>
+  <library_visual_scenes>
+    <visual_scene id="grass_plane" name="grass_plane">
+      <node name="Plane002" id="Plane002" sid="Plane002"><matrix sid="matrix">1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0</matrix><instance_geometry url="#Plane002-lib"><bind_material><technique_common><instance_material symbol="_19 - Default" target="#_19 - Default"/></technique_common></bind_material></instance_geometry><extra><technique profile="FCOLLADA"><visibility>1.0</visibility></technique></extra></node>
+      <extra><technique profile="MAX3D"><frame_rate>30.0</frame_rate></technique><technique profile="FCOLLADA"><start_time>0.0</start_time><end_time>3.333333</end_time></technique></extra>
+      <node>
+        <instance_light url="#SceneAmbient"></instance_light>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#grass_plane"></instance_visual_scene>
+  </scene>
+</COLLADA>
