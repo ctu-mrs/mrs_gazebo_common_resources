@@ -1,0 +1,54 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="servo_camera">
+    <static>1</static>
+    <link name="link_servo">
+      <sensor type="camera" name="servo_camera">
+        <update_rate>30</update_rate>
+        <camera name="head">
+          <horizontal_fov>2.1</horizontal_fov>
+          <image>
+            <width>1920</width>
+            <height>1080</height>
+          </image>
+          <clip>
+            <near>0.05</near>
+            <far>100</far>
+          </clip>
+          <noise>
+            <type>gaussian</type>
+              <!-- Noise is sampled independently per pixel on each frame.
+                That pixel's noise value is added to each of its color
+              channels, which at that point lie in the range [0,1]. -->
+            <mean>0.0</mean>
+            <stddev>0.01</stddev>
+          </noise>
+        </camera>
+        <plugin name="servo_camera_controller" filename="libMRSGazeboCameraPlugin.so">
+          <alwaysOn>true</alwaysOn>
+          <updateRate>30</updateRate>
+          <cameraName>servo_camera</cameraName>
+          <imageTopicName>image_raw</imageTopicName>
+          <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+          <frameName>/servo_camera_frame</frameName>
+          <hackBaseline>0.0</hackBaseline>
+          <distortionK1>0.0</distortionK1>
+          <distortionK2>0.0</distortionK2>
+          <distortionK3>0.0</distortionK3>
+          <distortionT1>0.0</distortionT1>
+          <distortionT2>0.0</distortionT2>
+          <parentFrameName>fcu_uav</parentFrameName>
+          <sensorBaseFrameName>servo_camera_sensor_frame</sensorBaseFrameName>
+          <x>${x}</x>
+          <y>${y}</y>
+          <z>${z}</z>
+          <roll>${roll}</roll>
+          <pitch>${pitch}</pitch>
+          <yaw>${yaw}</yaw>
+        </plugin>
+      </sensor>
+    </link>
+  </model>
+</sdf>
+
+

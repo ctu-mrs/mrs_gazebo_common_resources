@@ -1,0 +1,31 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="light_panel">
+	  <static>1</static>
+	  <link name="link_light">
+    <light type="spot" name="light_1">
+      <pose>0.0 0 0 -1.57 0 1.57</pose>
+      <diffuse>1 1 1 1</diffuse>
+      <specular>1 1 1 1</specular>
+      <attenuation>
+        <range>200</range>
+        <linear>0.05</linear>
+        <constant>0.11</constant>
+        <quadratic>0.01</quadratic>
+      </attenuation>
+      <cast_shadows>true</cast_shadows>
+      <spot>
+        <inner_angle>1.0</inner_angle>
+        <outer_angle>1.2</outer_angle>
+        <falloff>2</falloff>
+      </spot>
+    </light>
+    <inertial>
+      <mass value="1e-3" />
+      <inertia ixx="1e-5" ixy="0.0" ixz="0.0" iyy="1e-5" iyz="0.0" izz="1e-5"/>
+    </inertial>
+    </link>
+  </model>
+</sdf>
+
+

@@ -116,7 +116,6 @@ namespace gazebo
 
   class GazeboRos3DLaser : public RayPlugin
   {
-
   public:
     ////////////////////////////////////////////////////////////////////////////////
     // Constructor
@@ -138,12 +137,6 @@ namespace gazebo
       // Finalize the controller / Custom Callback Queue
       laser_queue_.clear();
       laser_queue_.disable();
-      if (nh_)
-      {
-        nh_->shutdown();
-        delete nh_;
-        nh_ = NULL;
-      }
       callback_laser_queue_thread_.join();
     }
 
@@ -388,6 +381,68 @@ namespace gazebo
           this->imu_yaw_ = _sdf->Get<double>("imu_yaw");
       }
 
+      // Pre-fill the coordinate coefficients for the different rays
+      /*  //{ */
+
+      {
+#if GAZEBO_MAJOR_VERSION >= 7
+        const ignition::math::Angle maxAngle = parent_ray_sensor_->AngleMax();
+        const ignition::math::Angle minAngle = parent_ray_sensor_->AngleMin();
+
+        const int rangeCount = parent_ray_sensor_->RangeCount();
+        const int verticalRangeCount = parent_ray_sensor_->VerticalRangeCount();
+
+        const ignition::math::Angle verticalMaxAngle = parent_ray_sensor_->VerticalAngleMax();
+        const ignition::math::Angle verticalMinAngle = parent_ray_sensor_->VerticalAngleMin();
+#else
+        math::Angle maxAngle = parent_ray_sensor_->GetAngleMax();
+        math::Angle minAngle = parent_ray_sensor_->GetAngleMin();
+
+        const int rangeCount = parent_ray_sensor_->GetRangeCount();
+        const int verticalRangeCount = parent_ray_sensor_->GetVerticalRangeCount();
+
+        const math::Angle verticalMaxAngle = parent_ray_sensor_->GetVerticalAngleMax();
+        const math::Angle verticalMinAngle = parent_ray_sensor_->GetVerticalAngleMin();
+#endif
+
+        const double yDiff = maxAngle.Radian() - minAngle.Radian();
+        const double pDiff = verticalMaxAngle.Radian() - verticalMinAngle.Radian();
+
+        double yAngle_step;
+        if (rangeCount > 1)
+          yAngle_step = yDiff / (rangeCount - 1);
+        else
+          yAngle_step = 0;
+
+        double pAngle_step;
+        if (verticalRangeCount > 1)
+          pAngle_step = pDiff / (verticalRangeCount - 1);
+        else
+          pAngle_step = 0;
+
+        coord_coeffs_.reserve(verticalRangeCount * rangeCount);
+        for (int i = 0; i < rangeCount; i++)
+        {
+          for (int j = 0; j < verticalRangeCount; j++)
+          {
+            // Get angles of ray to get xyz for point
+            const double yAngle = i * yAngle_step + minAngle.Radian();
+            const double pAngle = j * pAngle_step + verticalMinAngle.Radian();
+
+            const double x_coeff = cos(pAngle) * cos(yAngle);
+            const double y_coeff = cos(pAngle) * sin(yAngle);
+#if GAZEBO_MAJOR_VERSION > 2
+            const double z_coeff = sin(pAngle);
+#else
+            const double z_coeff = -sin(pAngle);
+#endif
+            coord_coeffs_.push_back({x_coeff, y_coeff, z_coeff});
+          }
+        }
+      }
+
+      //}
+
       // Make sure the ROS node for Gazebo has already been initialized
       if (!ros::isInitialized())
       {
@@ -397,14 +452,14 @@ namespace gazebo
       }
 
       // Create node handle
-      nh_ = new ros::NodeHandle(robot_namespace_);
+      nh_ = ros::NodeHandle(robot_namespace_);
 
       // Advertise publisher with a custom callback queue
       if (topic_name_ != "")
       {
         ros::AdvertiseOptions ao = ros::AdvertiseOptions::create<sensor_msgs::PointCloud2>(
             topic_name_, 1, boost::bind(&GazeboRos3DLaser::ConnectCb, this), boost::bind(&GazeboRos3DLaser::ConnectCb, this), ros::VoidPtr(), &laser_queue_);
-        pub_ = nh_->advertise(ao);
+        pub_ = nh_.advertise(ao);
       }
 
       // Sensor generation off by default
@@ -434,10 +489,10 @@ namespace gazebo
       /*   ros::Duration(0.01).sleep(); */
       /* } */
       ROS_INFO_NAMED("3d_lidar", "3d_lidar plugin - GazeboRos3DLaser initialized");
-      this->tf_pub_ = this->nh_->advertise<tf2_msgs::TFMessage>("/tf_gazebo_static", 10, false);
+      this->tf_pub_ = this->nh_.advertise<tf2_msgs::TFMessage>("/tf_gazebo_static", 10, false);
 
       createStaticTransforms();
-      this->timer_ = this->nh_->createWallTimer(ros::WallDuration(1.0), &GazeboRos3DLaser::publishStaticTransforms, this);
+      this->timer_ = this->nh_.createWallTimer(ros::WallDuration(1.0), &GazeboRos3DLaser::publishStaticTransforms, this);
     }
 
     //}
@@ -556,42 +611,27 @@ namespace gazebo
 
     /* OnScan() //{ */
 
-    void OnScan(ConstLaserScanStampedPtr& _msg)
+    void OnScan(const ConstLaserScanStampedPtr& msg)
+    {
+      std::thread t(&GazeboRos3DLaser::processScan, this, msg);
+      t.detach();
+    }
+
+    void processScan(const ConstLaserScanStampedPtr& _msg)
     {
 #if GAZEBO_MAJOR_VERSION >= 7
-      const ignition::math::Angle maxAngle = parent_ray_sensor_->AngleMax();
-      const ignition::math::Angle minAngle = parent_ray_sensor_->AngleMin();
-
       const double maxRange = parent_ray_sensor_->RangeMax();
       const double minRange = parent_ray_sensor_->RangeMin();
 
-      [[maybe_unused]] const int rayCount = parent_ray_sensor_->RayCount();
       const int rangeCount = parent_ray_sensor_->RangeCount();
-
-      [[maybe_unused]] const int verticalRayCount = parent_ray_sensor_->VerticalRayCount();
       const int verticalRangeCount = parent_ray_sensor_->VerticalRangeCount();
-
-      const ignition::math::Angle verticalMaxAngle = parent_ray_sensor_->VerticalAngleMax();
-      const ignition::math::Angle verticalMinAngle = parent_ray_sensor_->VerticalAngleMin();
 #else
-      math::Angle maxAngle = parent_ray_sensor_->GetAngleMax();
-      math::Angle minAngle = parent_ray_sensor_->GetAngleMin();
-
       const double maxRange = parent_ray_sensor_->GetRangeMax();
       const double minRange = parent_ray_sensor_->GetRangeMin();
 
-      [[maybe_unused]] const int rayCount = parent_ray_sensor_->GetRayCount();
       const int rangeCount = parent_ray_sensor_->GetRangeCount();
-
-      [[maybe_unused]] const int verticalRayCount = parent_ray_sensor_->GetVerticalRayCount();
       const int verticalRangeCount = parent_ray_sensor_->GetVerticalRangeCount();
-
-      const math::Angle verticalMaxAngle = parent_ray_sensor_->GetVerticalAngleMax();
-      const math::Angle verticalMinAngle = parent_ray_sensor_->GetVerticalAngleMin();
 #endif
-
-      const double yDiff = maxAngle.Radian() - minAngle.Radian();
-      const double pDiff = verticalMaxAngle.Radian() - verticalMinAngle.Radian();
 
       const double MIN_RANGE = std::max(min_range_, minRange);
       const double MAX_RANGE = std::min(max_range_, maxRange);
@@ -625,25 +665,12 @@ namespace gazebo
       msg.fields[4].count = 1;
       msg.data.resize(verticalRangeCount * rangeCount * POINT_STEP);
 
-      int i, j;
       uint8_t* ptr = msg.data.data();
-      bool apply_gaussian_noise = gaussian_noise_ != 0;
+      const bool apply_gaussian_noise = gaussian_noise_ != 0;
 
-      double yAngle_step;
-      if (rangeCount > 1)
-        yAngle_step = yDiff / (rangeCount - 1);
-      else
-        yAngle_step = 0;
-
-      double pAngle_step;
-      if (verticalRangeCount > 1)
-        pAngle_step = pDiff / (verticalRangeCount - 1);
-      else
-        pAngle_step = 0;
-
-      for (i = 0; i < rangeCount; i++)
+      for (int i = 0; i < rangeCount; i++)
       {
-        for (j = 0; j < verticalRangeCount; j++)
+        for (int j = 0; j < verticalRangeCount; j++)
         {
 
           // Range
@@ -661,18 +688,12 @@ namespace gazebo
           if (apply_gaussian_noise)
             r += gaussianKernel(0, gaussian_noise_);
 
-          // Get angles of ray to get xyz for point
-          const double yAngle = i * yAngle_step + minAngle.Radian();
-          const double pAngle = j * pAngle_step + verticalMinAngle.Radian();
+          const auto [x_coeff, y_coeff, z_coeff] = coord_coeffs_.at(i * verticalRangeCount + j);
 
           // pAngle is rotated by yAngle:
-          *((float*)(ptr + 0)) = r * cos(pAngle) * cos(yAngle);
-          *((float*)(ptr + 4)) = r * cos(pAngle) * sin(yAngle);
-#if GAZEBO_MAJOR_VERSION > 2
-          *((float*)(ptr + 8)) = r * sin(pAngle);
-#else
-          *((float*)(ptr + 8)) = -r * sin(pAngle);
-#endif
+          *((float*)(ptr + 0)) = r * x_coeff;
+          *((float*)(ptr + 4)) = r * y_coeff;
+          *((float*)(ptr + 8)) = r * z_coeff;
           *((float*)(ptr + 16)) = intensity;
 #if GAZEBO_MAJOR_VERSION > 2
           *((uint16_t*)(ptr + 20)) = j;  // ring
@@ -693,7 +714,11 @@ namespace gazebo
       msg.data.resize(msg.row_step);  // Shrink to actual size
 
       // Publish output
-      pub_.publish(msg);
+      {
+        boost::lock_guard<boost::mutex> lock(lock_);
+        pub_.publish(msg);
+        std::cout << "publishing laser message" << std::endl;
+      }
     }
 
     //}
@@ -705,7 +730,7 @@ namespace gazebo
 
     void laserQueueThread()
     {
-      while (nh_->ok())
+      while (nh_.ok())
       {
         laser_queue_.callAvailable(ros::WallDuration(0.01));
       }
@@ -713,26 +738,12 @@ namespace gazebo
 
     //}
 
-    /// \brief Gaussian noise generator
-    /* gaussianKernel() //{ */
-
-    static double gaussianKernel(double mu, double sigma)
-    {
-      // using Box-Muller transform to generate two independent standard normally distributed normal variables
-      // see wikipedia
-      double U = (double)rand() / (double)RAND_MAX;  // normalized uniform random variable
-      double V = (double)rand() / (double)RAND_MAX;  // normalized uniform random variable
-      return sigma * (sqrt(-2.0 * ::log(U)) * cos(2.0 * M_PI * V)) + mu;
-    }
-
-    //}
-
-  private:
     /// \brief The parent ray sensor
+  private:
     sensors::RaySensorPtr parent_ray_sensor_;
 
     /// \brief Pointer to ROS node
-    ros::NodeHandle* nh_;
+    ros::NodeHandle nh_;
 
     /// \brief ROS publisher
     ros::Publisher pub_;
@@ -755,28 +766,37 @@ namespace gazebo
     /// \brief Sensor has imu
     bool imu_;
 
-    /// \brief frame transform names
+    /// \brief Gaussian noise generator
+    static double gaussianKernel(double mu, double sigma)
+    {
+      // using Box-Muller transform to generate two independent standard normally distributed normal variables
+      // see wikipedia
+      double U = (double)rand() / (double)RAND_MAX;  // normalized uniform random variable
+      double V = (double)rand() / (double)RAND_MAX;  // normalized uniform random variable
+      return sigma * (sqrt(-2.0 * ::log(U)) * cos(2.0 * M_PI * V)) + mu;
+    }
+
+    // | ------------------ TF-related variables ------------------ |
   private:
+    std::vector<std::tuple<double, double, double>> coord_coeffs_;
+
     std::string parent_frame_name_;
     std::string sensor_frame_name_;
     std::string lidar_frame_name_;
     std::string imu_frame_name_;
 
     /// \brief frame transform parameters
-  private:
     double sensor_x_, sensor_y_, sensor_z_, sensor_roll_, sensor_pitch_, sensor_yaw_;
     double lidar_x_, lidar_y_, lidar_z_, lidar_roll_, lidar_pitch_, lidar_yaw_;
     double imu_x_, imu_y_, imu_z_, imu_roll_, imu_pitch_, imu_yaw_;
 
-    /// \brief frame transform variables
-  private:
     ros::Publisher tf_pub_;
     tf2_msgs::TFMessage tf_message_;
     ros::WallTimer timer_;
     boost::thread load_thread_;
 
+    // | --------------------- other variables -------------------- |
     /// \brief A mutex to lock access
-  private:
     boost::mutex lock_;
 
     /// \brief For setting ROS name space
@@ -784,12 +804,10 @@ namespace gazebo
 
     // Custom Callback Queue
     ros::CallbackQueue laser_queue_;
-
     boost::thread callback_laser_queue_thread_;
 
     // Subscribe to gazebo laserscan
     gazebo::transport::NodePtr gazebo_node_;
-
     gazebo::transport::SubscriberPtr sub_;
   };
 
