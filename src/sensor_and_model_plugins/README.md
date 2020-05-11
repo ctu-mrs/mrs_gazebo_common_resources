@@ -1,4 +1,4 @@
-# Sensors plugins for Gazebo
+# Sensor and model plugins for Gazebo
 
 ## Rangefinder plugin
 
