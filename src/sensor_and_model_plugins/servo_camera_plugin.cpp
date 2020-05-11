@@ -254,7 +254,7 @@ void ServoCameraPlugin::moveCamera() {
   if (model->GetLink("base_link") != NULL) {
     if (model->GetLink("base_link")->GetChildJoints().size() != 0) {
       int index = -1;
-      for (int i = 0; i < model->GetLink("base_link")->GetChildJoints().size(); i++) {
+      for (size_t i = 0; i < model->GetLink("base_link")->GetChildJoints().size(); i++) {
         if (model->GetLink("base_link")->GetChildJoints()[i]->GetName() == joint_name) {
           index = i;
           break;

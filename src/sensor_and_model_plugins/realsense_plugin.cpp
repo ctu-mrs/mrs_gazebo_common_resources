@@ -125,7 +125,7 @@ namespace gazebo
 
     /////////////////////////////////////////////////
     /* Load() method //{ */
-    void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
+    virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     {
       // Output the name of the model
       /* std::cout << std::endl */
@@ -280,7 +280,7 @@ namespace gazebo
 
     /////////////////////////////////////////////////
     /* OnNewFrame() method //{ */
-    void OnNewFrame(const rendering::CameraPtr cam, const transport::PublisherPtr pub)
+    virtual void OnNewFrame(const rendering::CameraPtr cam, const transport::PublisherPtr pub)
     {
       msgs::ImageStamped msg;
 
@@ -305,7 +305,7 @@ namespace gazebo
 
     /////////////////////////////////////////////////
     /* OnNewDepthFrame() method //{ */
-    void OnNewDepthFrame([[maybe_unused]] const rendering::CameraPtr cam, const transport::PublisherPtr pub)
+    virtual void OnNewDepthFrame([[maybe_unused]] const rendering::CameraPtr cam, const transport::PublisherPtr pub)
     {
       // Get Depth Map dimensions
       const unsigned imageWidth = this->depthCam->ImageWidth();
@@ -345,7 +345,7 @@ namespace gazebo
 
     /////////////////////////////////////////////////
     /* OnNewDepthFrameRealistic() method //{ */
-    void OnNewDepthFrameRealistic([[maybe_unused]] const rendering::CameraPtr cam, const transport::PublisherPtr pub)
+    virtual void OnNewDepthFrameRealistic([[maybe_unused]] const rendering::CameraPtr cam, const transport::PublisherPtr pub)
     {
       // Get Depth Map dimensions
       const unsigned imageWidth = this->depthCam->ImageWidth();
@@ -535,7 +535,7 @@ namespace gazebo
 
     /////////////////////////////////////////////////
     /* Load() method //{ */
-    void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
+    virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     {
       // Make sure the ROS node for Gazebo has already been initialized
       if (!ros::isInitialized())
@@ -755,7 +755,7 @@ namespace gazebo
 
     /////////////////////////////////////////////////
     /* OnNewFrame() method //{ */
-    void OnNewFrame(const rendering::CameraPtr cam, [[maybe_unused]] const transport::PublisherPtr pub)
+    virtual void OnNewFrame(const rendering::CameraPtr cam, [[maybe_unused]] const transport::PublisherPtr pub)
     {
       common::Time current_time = this->world->SimTime();
 
@@ -817,7 +817,7 @@ namespace gazebo
 
     /////////////////////////////////////////////////
     /* OnNewDepthFrame() method //{ */
-    void OnNewDepthFrame(const rendering::CameraPtr cam, const transport::PublisherPtr pub)
+    virtual void OnNewDepthFrame(const rendering::CameraPtr cam, const transport::PublisherPtr pub)
     {
       // get current time
       common::Time current_time = this->world->SimTime();
@@ -845,7 +845,7 @@ namespace gazebo
 
     /////////////////////////////////////////////////
     /* OnNewDepthFrameRealistic() method //{ */
-    void OnNewDepthFrameRealistic(const rendering::CameraPtr cam, const transport::PublisherPtr pub)
+    virtual void OnNewDepthFrameRealistic(const rendering::CameraPtr cam, const transport::PublisherPtr pub)
     {
       // get current time
       common::Time current_time = this->world->SimTime();

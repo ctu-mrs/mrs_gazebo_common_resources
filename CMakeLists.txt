@@ -109,8 +109,8 @@ target_link_libraries(MRSGazeboStaticTransformRepublisher
   ${catkin_LIBRARIES}
   )
 
-##  sensors plugins
-add_library(MRSGazeboRangefinderPlugin SHARED src/sensor_plugins/rangefinder_plugin.cpp)
+##  sensor and model plugins
+add_library(MRSGazeboRangefinderPlugin SHARED src/sensor_and_model_plugins/rangefinder_plugin.cpp)
 target_link_libraries(MRSGazeboRangefinderPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
@@ -118,7 +118,7 @@ target_link_libraries(MRSGazeboRangefinderPlugin
   RayPlugin
   )
 
-add_library(MRSGazebo2DLidarPlugin SHARED src/sensor_plugins/2dlidar_plugin.cpp)
+add_library(MRSGazebo2DLidarPlugin SHARED src/sensor_and_model_plugins/2dlidar_plugin.cpp)
 target_link_libraries(MRSGazebo2DLidarPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
@@ -126,7 +126,7 @@ target_link_libraries(MRSGazebo2DLidarPlugin
   RayPlugin
   )
 
-add_library(MRSGazebo3DLidarPlugin SHARED src/sensor_plugins/3dlidar_plugin.cpp)
+add_library(MRSGazebo3DLidarPlugin SHARED src/sensor_and_model_plugins/3dlidar_plugin.cpp)
 target_link_libraries(MRSGazebo3DLidarPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
@@ -134,7 +134,7 @@ target_link_libraries(MRSGazebo3DLidarPlugin
   RayPlugin
   )
 
-add_library(MRSGazebo3DLidarGpuPlugin SHARED src/sensor_plugins/3dlidar_plugin.cpp)
+add_library(MRSGazebo3DLidarGpuPlugin SHARED src/sensor_and_model_plugins/3dlidar_plugin.cpp)
 target_link_libraries(MRSGazebo3DLidarGpuPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
@@ -143,7 +143,7 @@ target_link_libraries(MRSGazebo3DLidarGpuPlugin
   )
 target_compile_definitions(MRSGazebo3DLidarGpuPlugin PRIVATE GAZEBO_GPU_RAY=1)
 
-add_library(MRSGazeboCameraPlugin SHARED src/sensor_plugins/camera_plugin.cpp)
+add_library(MRSGazeboCameraPlugin SHARED src/sensor_and_model_plugins/camera_plugin.cpp)
 target_link_libraries(MRSGazeboCameraPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
@@ -151,14 +151,14 @@ target_link_libraries(MRSGazeboCameraPlugin
   CameraPlugin
   )
 
-add_library(MRSGazeboRealsensePlugin SHARED src/sensor_plugins/realsense_plugin.cpp src/common/perlin_noise.cpp)
+add_library(MRSGazeboRealsensePlugin SHARED src/sensor_and_model_plugins/realsense_plugin.cpp src/common/perlin_noise.cpp)
 target_link_libraries(MRSGazeboRealsensePlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   )
 
-add_library(MRSGazeboGPSPlugin SHARED src/sensor_plugins/gps_plugin.cpp ${SEN_PROTO_SRCS})
+add_library(MRSGazeboGPSPlugin SHARED src/sensor_and_model_plugins/gps_plugin.cpp ${SEN_PROTO_SRCS})
 target_link_libraries(MRSGazeboGPSPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
@@ -166,21 +166,21 @@ target_link_libraries(MRSGazeboGPSPlugin
   )
 
 ##  model plugins
-add_library(MRSGazeboLightPlugin SHARED src/model_plugins/light_plugin.cpp)
+add_library(MRSGazeboLightPlugin SHARED src/sensor_and_model_plugins/light_plugin.cpp)
 target_link_libraries(MRSGazeboLightPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   )
 
-add_library(MRSGazeboServoCameraPlugin SHARED src/model_plugins/servo_camera_plugin.cpp)
+add_library(MRSGazeboServoCameraPlugin SHARED src/sensor_and_model_plugins/servo_camera_plugin.cpp)
 target_link_libraries(MRSGazeboServoCameraPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   )
 
-add_library(MRSGazeboDynamicModelPlugin SHARED src/model_plugins/dynamic_model_plugin.cpp)
+add_library(MRSGazeboDynamicModelPlugin SHARED src/sensor_and_model_plugins/dynamic_model_plugin.cpp)
 target_link_libraries(MRSGazeboDynamicModelPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}

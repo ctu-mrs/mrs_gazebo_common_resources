@@ -20,5 +20,4 @@ This package contains common gazebo files (worlds, models and plugins) for the M
 ## Plugins
 - [world_plugins](src/world_plugins) - Detail descriptions in [README](src/world_plugins/README.md)
 - [gui_plugins](src/gui_plugins) - Detail descriptions in [README](src/gui_plugins/README.md)
-- [sensor_plugins](src/sensor_plugins) - Detail descriptions in [README](src/sensor_plugins/README.md)
-- [model_plugins](src/model_plugins) - Detail descriptions in [README](src/model_plugins/README.md)
+- [sensor_and_model_plugins](src/sensor_and_model_plugins) - Detail descriptions in [README](src/sensor_and_model_plugins/README.md)
