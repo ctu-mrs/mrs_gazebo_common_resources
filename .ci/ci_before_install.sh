@@ -10,6 +10,9 @@ ssh-add ./.ci/deploy_key_github
 sudo apt-get update -qq
 sudo apt-get install dpkg git python-setuptools python3-setuptools python3-pip
 
+# will need this to test the compilation
+sudo apt -y install python-catkin-tools
+
 echo "clone simulation"
 cd
 git clone git@github.com:ctu-mrs/simulation.git
