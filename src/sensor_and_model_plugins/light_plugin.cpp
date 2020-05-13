@@ -288,7 +288,7 @@ void GazeboLightPlugin::moveLight(bool move_it_away) {
     if (model->GetLink("base_link") != NULL) {
       if (model->GetLink("base_link")->GetChildJoints().size() != 0) {
         int index = -1;
-        for (int i = 0; i < model->GetLink("base_link")->GetChildJoints().size(); i++) {
+        for (size_t i = 0; i < model->GetLink("base_link")->GetChildJoints().size(); i++) {
           if (model->GetLink("base_link")->GetChildJoints()[i]->GetName() == "light_macro_joint") {
             index = i;
             break;
@@ -328,7 +328,7 @@ void GazeboLightPlugin::moveLightPanelOnly() {
     if (model->GetLink("base_link") != NULL) {
       if (model->GetLink("base_link")->GetChildJoints().size() != 0) {
         int index = -1;
-        for (int i = 0; i < model->GetLink("base_link")->GetChildJoints().size(); i++) {
+        for (size_t i = 0; i < model->GetLink("base_link")->GetChildJoints().size(); i++) {
           if (model->GetLink("base_link")->GetChildJoints()[i]->GetName() == "light_macro_joint") {
             index = i;
             break;
