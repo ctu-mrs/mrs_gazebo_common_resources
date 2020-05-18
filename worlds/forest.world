@@ -2,7 +2,7 @@
 <?xml-model href="http://sdformat.org/schemas/root.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <sdf version="1.5">
   <world name="default">
-<!--plugin name="ros_link_attacher_plugin" filename="libgazebo_ros_link_attacher.so"/-->
+    <!-- <plugin name="mrs_gazebo_link_attacher_plugin" filename="libMRSGazeboLinkAttacherPlugin.so"/> -->
     <plugin name="mrs_gazebo_static_transform_republisher_plugin" filename="libMRSGazeboStaticTransformRepublisher.so"/>
     <spherical_coordinates>
       <surface_model>EARTH_WGS84</surface_model>
