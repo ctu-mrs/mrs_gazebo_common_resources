@@ -1,4 +1,4 @@
-# MRS gazebo resources for Gazebo [![Build Status](https://travis-ci.com/ctu-mrs/mrs_gazebo_common_resources.svg?branch=master)](https://travis-ci.com/ctu-mrs/mrs_gazebo_common_resources)
+# MRS resources for Gazebo [![Build Status](https://travis-ci.com/ctu-mrs/mrs_gazebo_common_resources.svg?branch=master)](https://travis-ci.com/ctu-mrs/mrs_gazebo_common_resources)
 
 This package contains common gazebo files (worlds, models and plugins) for the MRS system.
 
