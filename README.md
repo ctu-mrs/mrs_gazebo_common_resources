@@ -16,6 +16,8 @@ This package contains common gazebo files (worlds, models and plugins) for the M
 - [light_panel](models/light_panel) 
 - [servo_camera](models/servo_camera) 
 - [dynamic_pickup](models/dynamic_pickup) 
+- [water_particle](models/water_particle)
+- [deployed_parachute](models/deployed_parachute)
 
 ## Plugins
 - [world_plugins](src/world_plugins) - Detail descriptions in [README](src/world_plugins/README.md)
