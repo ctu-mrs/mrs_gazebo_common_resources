@@ -327,3 +327,67 @@ The trajectory is defined by sequence of tuples "x y z roll pitch yaw velocity",
   9.3 3.4 0.0 0.0 0.0 3.0 0.5
   ...
 ```
+
+## Parachute plugin
+
+### Description
+- Adds a deployable emergency parachute to the attached model. WHen packed, it appears as a cylinder.
+- Modifies the physics of attached model to significantly increase its drag and dampens the falling velocity.
+
+
+### Usage
+After building, activate by adding the following to your robot definition.
+
+```xml
+  ...
+  <plugin name="parachute_plugin" filename="libMRSGazeboParachutePlugin.so">
+    <air_density>1.225</air_density>
+    <drag_coeff>500</drag_coeff>
+    <cross_section>0.25</cross_section> <!-- [m^2] -->
+    <offset_x>0</offset_x>
+    <offset_y>0</offset_y>
+    <offset_z>-1.56</offset_z>
+  </plugin>
+  ...
+```
+Control the parachute by provided trigger services
+```
+rosservice call /parent_model_name/parachute/deploy
+```
+```
+rosservice call /parent_model_name/parachute/reset
+```
+
+## Water gun plugin
+
+### Description
+- Adds a water tank to the model. On activation, the tank will spray spherical particles with a force taken from xml parameters.
+
+### Usage
+After building, activate by adding the following to your robot definition.
+
+```xml
+  ...
+  <plugin name="water_gun_plugin" filename="libMRSGazeboWaterGunPlugin.so">
+    <muzzle_velocity>${muzzle_velocity}</muzzle_velocity>
+    <offset_x>${offset_x}</offset_x>
+    <offset_y>${offset_y}</offset_y>
+    <offset_z>${offset_z}</offset_z>
+    <spread>${spread}</spread>
+    <particle_capacity>${particle_capacity}</particle_capacity>
+    <spawning_reservoir>${spawning_reservoir}</spawning_reservoir>
+  </plugin>
+  ...
+```
+The water gun can be activated by the following service, which will cause it to spray particles infinetly.
+```
+rosservice call /parent_model_name/water_gun/start
+```
+To stop the spraying, call the stopping service.
+```
+rosservice call /parent_model_name/water_gun/start
+```
+If you wish to remove all water particles from the scene, use the following service.
+```
+rosservice call /parent_model_name/water_gun/cleanup
+```
