@@ -67,7 +67,7 @@ catkin_package(
    # INCLUDE_DIRS include
    CATKIN_DEPENDS geometry_msgs tf2_msgs gazebo_plugins
    DEPENDS GAZEBO Qt5Widgets Boost Eigen
-   LIBRARIES MRSGazeboGuiManager MRSGazeboRvizCameraSynchronizer MRSGazeboStaticTransformRepublisher MRSGazeboRangefinderPlugin MRSGazebo2DLidarPlugin MRSGazebo3DLidarPlugin MRSGazebo3DLidarGpuPlugin MRSGazeboCameraPlugin MRSGazeboRealsensePlugin MRSGazeboGPSPlugin MRSGazeboLightPlugin MRSGazeboServoCameraPlugin MRSGazeboDynamicModelPlugin
+   LIBRARIES MRSGazeboGuiManager MRSGazeboRvizCameraSynchronizer MRSGazeboStaticTransformRepublisher MRSGazeboRangefinderPlugin MRSGazebo2DLidarPlugin MRSGazebo3DLidarPlugin MRSGazebo3DLidarGpuPlugin MRSGazeboCameraPlugin MRSGazeboRealsensePlugin MRSGazeboParachutePlugin MRSGazeboWaterGunPlugin MRSGazeboGPSPlugin MRSGazeboLightPlugin MRSGazeboServoCameraPlugin MRSGazeboDynamicModelPlugin
 )
 
 ###########
@@ -153,6 +153,20 @@ target_link_libraries(MRSGazeboCameraPlugin
 
 add_library(MRSGazeboRealsensePlugin SHARED src/sensor_and_model_plugins/realsense_plugin.cpp src/common/perlin_noise.cpp)
 target_link_libraries(MRSGazeboRealsensePlugin
+  ${GAZEBO_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  )
+
+add_library(MRSGazeboParachutePlugin SHARED src/sensor_and_model_plugins/parachute_plugin.cpp)
+target_link_libraries(MRSGazeboParachutePlugin
+  ${GAZEBO_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  )
+
+add_library(MRSGazeboWaterGunPlugin SHARED src/sensor_and_model_plugins/water_gun_plugin.cpp)
+target_link_libraries(MRSGazeboWaterGunPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
