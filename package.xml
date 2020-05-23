@@ -7,7 +7,7 @@
   <author email="vojtech.spurny@fel.cvut.cz">Vojtech Spurny</author>
   <maintainer email="vojtech.spurny@fel.cvut.cz">Vojtech Spurny</maintainer>
 
-  <license>BSD, Apache 2.0</license>
+  <license>BSD 3-Clause</license>
 
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>roscpp</build_depend>
