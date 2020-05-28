@@ -112,7 +112,7 @@ void ParachutePlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
 
   std::stringstream ss;
   // create ROS services to control the parachute
-  ss << "/" << uav_name << "/parachute/deploy";
+  ss << "/" << uav_name << "/parachute_driver/fire_parachute";
   deploy_srv = nh_->advertiseService(ss.str().c_str(), &ParachutePlugin::deployCallback, this);
   ss.str(std::string());
   ss << "/" << uav_name << "/parachute/reset";
@@ -187,9 +187,9 @@ void ParachutePlugin::updatePhysics() {
   adhoc_drag_torque.X() = -0.7 * sin(rpy.X());
   adhoc_drag_torque.Y() = -0.7 * sin(rpy.Y());
   link_->SetTorque(adhoc_drag_torque);
-  ROS_INFO_STREAM("Force applied: " << drag_force);
-  ROS_INFO_STREAM("Torque applied: " << drag_force);
-  ROS_INFO_STREAM("Roll: " << rpy.X() << ", Pitch: " << rpy.Y());
+  /* ROS_INFO_STREAM("Force applied: " << drag_force); */
+  /* ROS_INFO_STREAM("Torque applied: " << drag_force); */
+  /* ROS_INFO_STREAM("Roll: " << rpy.X() << ", Pitch: " << rpy.Y()); */
 }
 //}
 
