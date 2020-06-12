@@ -18,8 +18,10 @@ git clone https://github.com/ctu-mrs/uav_core
 cd uav_core
 ./installation/install.sh
 
-echo "running the simulation install.sh"
-cd "$TRAVIS_BUILD_DIR"
+echo "installing simulation"
+cd
+git clone https://github.com/ctu-mrs/simulation
+cd simulation
 ./installation/install.sh
 
 gitman update
@@ -41,7 +43,7 @@ sudo apt -y install python-catkin-tools
 echo "creating workspace"
 mkdir -p ~/catkin_ws/src
 cd ~/catkin_ws/src
-ln -s "$TRAVIS_BUILD_DIR"
+ln -s ~/simulation
 source /opt/ros/melodic/setup.bash
 cd ~/catkin_ws
 catkin init
