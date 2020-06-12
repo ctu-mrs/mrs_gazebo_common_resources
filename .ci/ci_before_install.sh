@@ -13,6 +13,7 @@ sudo apt-get update -qq
 sudo apt-get install dpkg git python-setuptools python3-setuptools python3-pip
 
 echo "installing uav_core"
+cd
 git clone https://github.com/ctu-mrs/uav_core
 cd uav_core
 ./installation/install.sh
