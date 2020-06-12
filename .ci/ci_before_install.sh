@@ -12,6 +12,11 @@ ssh-add ./.ci/deploy_key_github
 sudo apt-get update -qq
 sudo apt-get install dpkg git python-setuptools python3-setuptools python3-pip
 
+echo "installing uav_core"
+git clone https://github.com/ctu-mrs/uav_core
+cd uav_core
+./installation/install.sh
+
 echo "clone simulation"
 cd
 git clone https://github.com/ctu-mrs/simulation.git
@@ -36,6 +41,7 @@ git checkout "$SHA"
 # will need this to test the compilation
 sudo apt -y install python-catkin-tools
 
+echo "creating workspace"
 mkdir -p ~/catkin_ws/src
 cd ~/catkin_ws/src
 ln -s ~/simulation
