@@ -717,7 +717,6 @@ namespace gazebo
       {
         boost::lock_guard<boost::mutex> lock(lock_);
         pub_.publish(msg);
-        std::cout << "publishing laser message" << std::endl;
       }
     }
 
