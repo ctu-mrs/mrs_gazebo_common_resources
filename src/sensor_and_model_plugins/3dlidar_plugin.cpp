@@ -200,6 +200,15 @@ namespace gazebo
         min_intensity_ = _sdf->GetElement("min_intensity")->Get<double>();
       }
 
+      if (!_sdf->HasElement("ordered"))
+      {
+        ROS_INFO("3D laser plugin missing <ordered>, defaults to false");
+        ordered_ = false;
+      } else
+      {
+        ordered_ = _sdf->GetElement("ordered")->Get<bool>();
+      }
+
       if (!_sdf->HasElement("topicName"))
       {
         ROS_INFO("3D laser plugin missing <topicName>, defaults to /points");
@@ -679,14 +688,19 @@ namespace gazebo
           // Intensity
           const double intensity = _msg->scan().intensities(i + j * rangeCount);
 
-          // Ignore points that lay outside range bands or optionally, beneath a
-          // minimum intensity level.
-          if ((MIN_RANGE >= r) || (r >= MAX_RANGE) || (intensity < MIN_INTENSITY))
-            continue;
-
           // Noise
           if (apply_gaussian_noise)
             r += gaussianKernel(0, gaussian_noise_);
+
+          // Ignore points that lay outside range bands or optionally, beneath a
+          // minimum intensity level.
+          if ((MIN_RANGE >= r) || (r >= MAX_RANGE) || (intensity < MIN_INTENSITY))
+          {
+            if (ordered_)
+              r = 0.0;
+            else
+              continue;
+          }
 
           const auto [x_coeff, y_coeff, z_coeff] = coord_coeffs_.at(i * verticalRangeCount + j);
 
@@ -758,6 +772,9 @@ namespace gazebo
 
     /// \brief Minimum intensity to publish
     double min_intensity_;
+
+    /// \brief Whether the cloud should be ordered (dense) - invalid points will not be dropped, but will be [0,0,0]
+    bool ordered_;
 
     /// \brief Gaussian noise
     double gaussian_noise_;
