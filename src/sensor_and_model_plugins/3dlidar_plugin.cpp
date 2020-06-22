@@ -462,6 +462,7 @@ namespace gazebo
 
       // Create node handle
       nh_ = ros::NodeHandle(robot_namespace_);
+      m_processing_scan = false;
 
       // Advertise publisher with a custom callback queue
       if (topic_name_ != "")
@@ -620,10 +621,18 @@ namespace gazebo
 
     /* OnScan() //{ */
 
+    std::atomic_bool m_processing_scan;
+
     void OnScan(const ConstLaserScanStampedPtr& msg)
     {
-      std::thread t(&GazeboRos3DLaser::processScan, this, msg);
-      t.detach();
+      // make sure that only one scan is being processed at a time to avoid clogging the CPU
+      // (rather throttle the scans)
+      if (!m_processing_scan)
+      {
+        m_processing_scan = true;
+        std::thread t(&GazeboRos3DLaser::processScan, this, msg);
+        t.detach();
+      }
     }
 
     void processScan(const ConstLaserScanStampedPtr& _msg)
@@ -676,11 +685,18 @@ namespace gazebo
 
       uint8_t* ptr = msg.data.data();
       const bool apply_gaussian_noise = gaussian_noise_ != 0;
+      if (_msg->scan().ranges_size() != rangeCount*verticalRangeCount)
+        ROS_ERROR("3D laser plugin: scan has unexpected size (%d, expected %d)", _msg->scan().ranges_size(), rangeCount*verticalRangeCount);
 
-      for (int i = 0; i < rangeCount; i++)
+      for (int hit = 0; hit < rangeCount; hit++)
       {
-        for (int j = 0; j < verticalRangeCount; j++)
+        // so that it starts from the top angle and goes down (according to Ouster data ordering)
+        for (int j = verticalRangeCount-1; j >= 0; j--)
         {
+          // ensure that the points are ordered starting from the angle 0 and goes up to 2*pi
+          int i = rangeCount/2 - hit;
+          if (i < 0)
+            i += rangeCount;
 
           // Range
           double r = _msg->scan().ranges(i + j * rangeCount);
@@ -732,6 +748,7 @@ namespace gazebo
         boost::lock_guard<boost::mutex> lock(lock_);
         pub_.publish(msg);
       }
+      m_processing_scan = false;
     }
 
     //}
