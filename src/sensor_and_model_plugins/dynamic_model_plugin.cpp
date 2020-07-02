@@ -114,7 +114,15 @@ void DynamicModelPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   }
   if (_sdf->HasElement("trajectory_file")) {
     std::string path = ros::package::getPath("mrs_gazebo_common_resources");
-    trajectory_file = path + "/models/dynamic_pickup/trajectories/"+_sdf->Get<std::string>("trajectory_file");
+    trajectory_file  = _sdf->Get<std::string>("trajectory_file");
+    ROS_INFO("[%s]: Obtained trajectory file = %s", ros::this_node::getName().c_str(), trajectory_file.c_str());
+    if (trajectory_file.at(0) == '/') {
+      ROS_INFO("[%s]: Absolute trajectory path obtained", ros::this_node::getName().c_str());
+    } else if (trajectory_file.find('/')!=std::string::npos) {
+      trajectory_file  = path + "/" + _sdf->Get<std::string>("trajectory_file");
+    } else {
+      trajectory_file  = path + "/models/" + parent_name + "/trajectories/" + _sdf->Get<std::string>("trajectory_file");
+    }
     ROS_INFO("[%s]: Trajectory file = %s ", ros::this_node::getName().c_str(), trajectory_file.c_str());
   } else {
     ROS_WARN("[%s][Dynamic model]: Map_path not defined. Has to be loaded by publishing on topic.", parent_name.c_str());
@@ -231,11 +239,11 @@ void DynamicModelPlugin::publishPose(ignition::math::Pose3d pose) {
   odometry_msg.pose.pose.orientation.y = pose.Rot().Y();
   odometry_msg.pose.pose.orientation.z = pose.Rot().Z();
   odometry_msg.pose.pose.orientation.w = pose.Rot().W();
-  odometry_msg.header.stamp       = ros::Time::now();
-  odometry_msg.twist.twist.linear.x   = (pose.Pos().X() - previous_pose.Pos().X())*update_rate;
-  odometry_msg.twist.twist.linear.y   = (pose.Pos().Y() - previous_pose.Pos().Y())*update_rate;
-  odometry_msg.twist.twist.linear.z   = (pose.Pos().Z() - previous_pose.Pos().Z())*update_rate;
-  previous_pose = pose;
+  odometry_msg.header.stamp            = ros::Time::now();
+  odometry_msg.twist.twist.linear.x    = (pose.Pos().X() - previous_pose.Pos().X()) * update_rate;
+  odometry_msg.twist.twist.linear.y    = (pose.Pos().Y() - previous_pose.Pos().Y()) * update_rate;
+  odometry_msg.twist.twist.linear.z    = (pose.Pos().Z() - previous_pose.Pos().Z()) * update_rate;
+  previous_pose                        = pose;
   try {
     pose_pub.publish(odometry_msg);
   }
@@ -422,10 +430,10 @@ void DynamicModelPlugin::segmentateMap() {
     current_angles[1] = fmod(pitch_angles[i - 1] + n_steps * xyzrpy_steps[4] + 2 * M_PI, 2 * M_PI);
     current_angles[2] = fmod(yaw_angles[i - 1] + n_steps * xyzrpy_steps[5] + 2 * M_PI, 2 * M_PI);
   }
-  
+
   segmented_trajectory = local_segmented_trajectory;
-  trajectory_pointer = 0;
-  current_pose       = segmented_trajectory[trajectory_pointer];
+  trajectory_pointer   = 0;
+  current_pose         = segmented_trajectory[trajectory_pointer];
   moveModel();
 
   ROS_INFO("[%s]: Trajectory segmented.", ros::this_node::getName().c_str());
