@@ -16,7 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_plugins
 )
 
-# includei Gazebo
+# include Gazebo
 find_package(gazebo REQUIRED)
 
 # include Qt
