@@ -689,15 +689,15 @@ namespace gazebo
       msg.fields[2].datatype = sensor_msgs::PointField::FLOAT32;
       msg.fields[2].count = 1;
       msg.fields[3].name = "intensity";
-      msg.fields[3].offset = 12;
+      msg.fields[3].offset = 16;
       msg.fields[3].datatype = sensor_msgs::PointField::FLOAT32;
       msg.fields[3].count = 1;
       msg.fields[4].name = "ring";
-      msg.fields[4].offset = 16;
+      msg.fields[4].offset = 20;
       msg.fields[4].datatype = sensor_msgs::PointField::UINT8;
       msg.fields[4].count = 1;
       msg.fields[5].name = "range";
-      msg.fields[5].offset = 20;
+      msg.fields[5].offset = 24;
       msg.fields[5].datatype = sensor_msgs::PointField::UINT32;
       msg.fields[5].count = 1;
       msg.data.resize(verticalRangeCount * rangeCount * POINT_STEP);
@@ -721,7 +721,7 @@ namespace gazebo
           double r = _msg->scan().ranges(i + j * rangeCount);
 
           // Intensity
-          const double intensity = _msg->scan().intensities(i + j * rangeCount);
+          const float intensity = _msg->scan().intensities(i + j * rangeCount);
 
           // Noise
           if (apply_gaussian_noise)
@@ -743,13 +743,13 @@ namespace gazebo
           *((float*)(ptr + 0)) = r * x_coeff;
           *((float*)(ptr + 4)) = r * y_coeff;
           *((float*)(ptr + 8)) = r * z_coeff;
-          *((float*)(ptr + 12)) = intensity;
+          *((float*)(ptr + 16)) = intensity;
 #if GAZEBO_MAJOR_VERSION > 2
-          *((uint8_t*)(ptr + 16)) = j;  // ring
+          *((uint8_t*)(ptr + 20)) = j;  // ring
 #else
-          *((uint8_t*)(ptr + 16)) = verticalRangeCount - 1 - j;  // ring
+          *((uint8_t*)(ptr + 20)) = verticalRangeCount - 1 - j;  // ring
 #endif
-          *((uint32_t*)(ptr + 20)) = static_cast<uint32_t>(1000.0f*r);  // ring
+          *((uint32_t*)(ptr + 24)) = static_cast<uint32_t>(1000.0*r);  // ring
           ptr += POINT_STEP;
         }
       }
