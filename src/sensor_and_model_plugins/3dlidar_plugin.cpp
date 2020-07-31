@@ -92,6 +92,7 @@
 #include <gazebo/transport/Node.hh>
 
 #include <sensor_msgs/PointCloud2.h>
+#include <std_msgs/Empty.h>
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf/tf.h>
@@ -216,6 +217,15 @@ namespace gazebo
       } else
       {
         topic_name_ = _sdf->GetElement("topicName")->Get<std::string>();
+      }
+
+      if (!_sdf->HasElement("topicDiagName"))
+      {
+        ROS_INFO("3D laser plugin missing <topicDiagName>, defaults to /laser_diag");
+        topic_diag_name_ = "/laser_diag";
+      } else
+      {
+        topic_diag_name_ = _sdf->GetElement("topicDiagName")->Get<std::string>();
       }
 
       if (!_sdf->HasElement("gaussianNoise"))
@@ -470,6 +480,11 @@ namespace gazebo
         ros::AdvertiseOptions ao = ros::AdvertiseOptions::create<sensor_msgs::PointCloud2>(
             topic_name_, 1, boost::bind(&GazeboRos3DLaser::ConnectCb, this), boost::bind(&GazeboRos3DLaser::ConnectCb, this), ros::VoidPtr(), &laser_queue_);
         pub_ = nh_.advertise(ao);
+      }
+
+      if (topic_diag_name_ != "")
+      {
+        pub_diag_ = nh_.advertise<std_msgs::Empty>(topic_diag_name_, 1);
       }
 
       // Sensor generation off by default
@@ -752,6 +767,7 @@ namespace gazebo
       {
         boost::lock_guard<boost::mutex> lock(lock_);
         pub_.publish(msg);
+        pub_diag_.publish(std_msgs::Empty());
       }
       m_processing_scan = false;
     }
@@ -783,8 +799,14 @@ namespace gazebo
     /// \brief ROS publisher
     ros::Publisher pub_;
 
+    /// \brief ROS publisher of diagnostics
+    ros::Publisher pub_diag_;
+
     /// \brief topic name
     std::string topic_name_;
+
+    /// \brief topic name of diagnostics
+    std::string topic_diag_name_;
 
     /// \brief Minimum range to publish
     double min_range_;

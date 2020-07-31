@@ -25,7 +25,7 @@
      <plugin name="dynamic_target_plugin" filename="libMRSGazeboDynamicModelPlugin.so">
        <update_rate>30</update_rate>
        <initial_on>true</initial_on>
-       <trajectory_file>/home/mrs/straight.txt</trajectory_file>
+       <trajectory_file>circle_trajectory.txt</trajectory_file>
        <loop_enabled>true</loop_enabled>
        <use_segmentation>true</use_segmentation>
        <use_directional_yaw>true</use_directional_yaw>
