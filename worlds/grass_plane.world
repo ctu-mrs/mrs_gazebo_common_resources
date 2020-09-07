@@ -41,7 +41,7 @@
 
     <!-- turn on shadows {-->
     <scene>
-      <shadows>true</shadows>
+      <shadows>false</shadows>
       <sky>
         <clouds/>
       </sky>
