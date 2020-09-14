@@ -49,9 +49,9 @@
     <!--}-->
 
     <!-- sun {-->
-    <light type="directional" name="sun">
-      <cast_shadows>true</cast_shadows>
-      <pose>250 250 600 0 0 0</pose>
+    <light name="sun" type="directional">
+      <pose frame=''>250 250 600 0.5 0.2 0</pose>
+      <cast_shadows>1</cast_shadows>
       <diffuse>0.8 0.8 0.8 1</diffuse>
       <specular>0.2 0.2 0.2 1</specular>
       <attenuation>
