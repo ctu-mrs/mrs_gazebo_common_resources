@@ -39,7 +39,7 @@
     </physics>
     <!--}-->
 
-    <!-- turn on shadows {-->
+    <!-- setup shadows {-->
     <scene>
       <shadows>false</shadows>
       <sky>
@@ -51,9 +51,9 @@
     <!-- sun {-->
 
     <light name='sun' type='directional'>
-      <pose frame=''>0 0 1000 0 -0 0</pose>
-      <diffuse>0.5 0.5 0.5 1</diffuse>
-      <specular>0.1 0.1 0.1 1</specular>
+      <pose frame=''>0 0 1000 0.4 0.2 0</pose>
+      <diffuse>1 1 1 1</diffuse>
+      <specular>0.6 0.6 0.6 1</specular>
       <direction>0.1 0.1 -0.9</direction>
       <attenuation>
         <range>20</range>
