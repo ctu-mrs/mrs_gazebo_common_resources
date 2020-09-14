@@ -1,10 +1,7 @@
 cmake_minimum_required(VERSION 3.2.0)
 project(mrs_gazebo_common_resources)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -O3 -Wall")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -std=c++17 -O3 -Wall")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -std=c++17 -O0 -g -Wall")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -std=c++17 -O3 -g -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -19,11 +16,14 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_plugins
 )
 
-# includei Gazebo
+# include Gazebo
 find_package(gazebo REQUIRED)
 
 # include Qt
 find_package(Qt5Widgets REQUIRED)
+
+# include OpenCV
+find_package(OpenCV REQUIRED)
 
 # include Boost
 find_package(Boost REQUIRED COMPONENTS thread)
@@ -66,7 +66,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 catkin_package(
    # INCLUDE_DIRS include
    CATKIN_DEPENDS geometry_msgs tf2_msgs gazebo_plugins
-   DEPENDS GAZEBO Qt5Widgets Boost Eigen
+   DEPENDS GAZEBO Qt5Widgets Boost Eigen OpenCV
    LIBRARIES MRSGazeboGuiManager MRSGazeboRvizCameraSynchronizer MRSGazeboStaticTransformRepublisher MRSGazeboRangefinderPlugin MRSGazebo2DLidarPlugin MRSGazebo3DLidarPlugin MRSGazebo3DLidarGpuPlugin MRSGazeboCameraPlugin MRSGazeboRealsensePlugin MRSGazeboParachutePlugin MRSGazeboWaterGunPlugin MRSGazeboGPSPlugin MRSGazeboLightPlugin MRSGazeboServoCameraPlugin MRSGazeboDynamicModelPlugin
 )
 
@@ -82,6 +82,7 @@ include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
   ${catkin_INCLUDE_DIRS}
   ${Qt5Widgets_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${Eigen_INCLUDE_DIRS}
   )
@@ -156,6 +157,7 @@ target_link_libraries(MRSGazeboRealsensePlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
+  ${OpenCV_LIBRARIES}
   )
 
 add_library(MRSGazeboParachutePlugin SHARED src/sensor_and_model_plugins/parachute_plugin.cpp)

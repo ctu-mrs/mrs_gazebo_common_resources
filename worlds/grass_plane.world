@@ -39,7 +39,7 @@
     </physics>
     <!--}-->
 
-    <!-- turn off shadows {-->
+    <!-- turn on shadows {-->
     <scene>
       <shadows>false</shadows>
       <sky>
@@ -49,19 +49,21 @@
     <!--}-->
 
     <!-- sun {-->
-    <light name="sun" type="directional">
-      <pose frame=''>250 250 600 0.5 0.2 0</pose>
-      <cast_shadows>1</cast_shadows>
-      <diffuse>0.8 0.8 0.8 1</diffuse>
-      <specular>0.2 0.2 0.2 1</specular>
+
+    <light name='sun' type='directional'>
+      <pose frame=''>0 0 1000 0 -0 0</pose>
+      <diffuse>0.5 0.5 0.5 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+      <direction>0.1 0.1 -0.9</direction>
       <attenuation>
-        <range>1000</range>
-        <constant>0.9</constant>
+        <range>20</range>
+        <constant>0.5</constant>
         <linear>0.01</linear>
         <quadratic>0.001</quadratic>
       </attenuation>
-      <direction>0 0 -1</direction>
+      <cast_shadows>1</cast_shadows>
     </light>
+
     <!--}-->
 
     <!-- ground plane {-->
@@ -143,7 +145,7 @@
     <plugin name="mrs_gazebo_rviz_cam_synchronizer" filename="libMRSGazeboRvizCameraSynchronizer.so" >
       <target_frame_id>gazebo_user_camera</target_frame_id>
       <world_origin_frame_id>uav1/gps_origin</world_origin_frame_id>
-      <frame_to_follow>uav1::base_link</frame_to_follow>
+      <frame_to_follow>uav1</frame_to_follow>
     </plugin>
     <!--}-->
 

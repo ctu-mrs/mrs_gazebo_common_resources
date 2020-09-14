@@ -23,7 +23,6 @@
 #include <gazebo_msgs/DeleteModel.h>
 #include <gazebo_msgs/SetModelState.h>
 #include <gazebo_msgs/ModelStates.h>
-#include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/String.h>
 
@@ -85,6 +84,7 @@ private:
   std::vector<double>                 roll_angles;
   std::vector<double>                 pitch_angles;
   ignition::math::Pose3d              current_pose;
+  ignition::math::Pose3d              previous_pose;
 };
 //}
 
@@ -113,7 +113,16 @@ void DynamicModelPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
     loop_enabled = true;
   }
   if (_sdf->HasElement("trajectory_file")) {
-    trajectory_file = _sdf->Get<std::string>("trajectory_file");
+    std::string path = ros::package::getPath("mrs_gazebo_common_resources");
+    trajectory_file  = _sdf->Get<std::string>("trajectory_file");
+    ROS_INFO("[%s]: Obtained trajectory file = %s", ros::this_node::getName().c_str(), trajectory_file.c_str());
+    if (trajectory_file.at(0) == '/') {
+      ROS_INFO("[%s]: Absolute trajectory path obtained", ros::this_node::getName().c_str());
+    } else if (trajectory_file.find('/')!=std::string::npos) {
+      trajectory_file  = path + "/" + _sdf->Get<std::string>("trajectory_file");
+    } else {
+      trajectory_file  = path + "/models/" + parent_name + "/trajectories/" + _sdf->Get<std::string>("trajectory_file");
+    }
     ROS_INFO("[%s]: Trajectory file = %s ", ros::this_node::getName().c_str(), trajectory_file.c_str());
   } else {
     ROS_WARN("[%s][Dynamic model]: Map_path not defined. Has to be loaded by publishing on topic.", parent_name.c_str());
@@ -148,9 +157,9 @@ void DynamicModelPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   ss << "/gazebo/dynamic_model/" << parent_name << "/reset";
   reset_srv = nh->advertiseService(ss.str().c_str(), &DynamicModelPlugin::resetCallback, this);
   ss.str(std::string());
-  ss << "/gazebo/dynamic_model/" << parent_name << "/pose";
+  ss << "/gazebo/dynamic_model/" << parent_name << "/odometry";
   motion_timer = nh->createTimer(ros::Rate(update_rate), &DynamicModelPlugin::motionTimerCallback, this);
-  pose_pub     = nh->advertise<geometry_msgs::PoseStamped>(ss.str().c_str(), 1);
+  pose_pub     = nh->advertise<nav_msgs::Odometry>(ss.str().c_str(), 1);
 
   if (!trajectory_file.empty()) {
     loadMap();
@@ -222,17 +231,21 @@ bool DynamicModelPlugin::resetCallback(std_srvs::TriggerRequest &req, std_srvs::
 /* publishPose() //{ */
 
 void DynamicModelPlugin::publishPose(ignition::math::Pose3d pose) {
-  geometry_msgs::PoseStamped pose_msg;
-  pose_msg.pose.position.x    = pose.Pos().X();
-  pose_msg.pose.position.y    = pose.Pos().Y();
-  pose_msg.pose.position.z    = pose.Pos().Z();
-  pose_msg.pose.orientation.x = pose.Rot().X();
-  pose_msg.pose.orientation.y = pose.Rot().Y();
-  pose_msg.pose.orientation.z = pose.Rot().Z();
-  pose_msg.pose.orientation.w = pose.Rot().W();
-  pose_msg.header.stamp       = ros::Time::now();
+  nav_msgs::Odometry odometry_msg;
+  odometry_msg.pose.pose.position.x    = pose.Pos().X();
+  odometry_msg.pose.pose.position.y    = pose.Pos().Y();
+  odometry_msg.pose.pose.position.z    = pose.Pos().Z();
+  odometry_msg.pose.pose.orientation.x = pose.Rot().X();
+  odometry_msg.pose.pose.orientation.y = pose.Rot().Y();
+  odometry_msg.pose.pose.orientation.z = pose.Rot().Z();
+  odometry_msg.pose.pose.orientation.w = pose.Rot().W();
+  odometry_msg.header.stamp            = ros::Time::now();
+  odometry_msg.twist.twist.linear.x    = (pose.Pos().X() - previous_pose.Pos().X()) * update_rate;
+  odometry_msg.twist.twist.linear.y    = (pose.Pos().Y() - previous_pose.Pos().Y()) * update_rate;
+  odometry_msg.twist.twist.linear.z    = (pose.Pos().Z() - previous_pose.Pos().Z()) * update_rate;
+  previous_pose                        = pose;
   try {
-    pose_pub.publish(pose_msg);
+    pose_pub.publish(odometry_msg);
   }
   catch (...) {
     ROS_ERROR("Exception caught during publishing topic %s.", pose_pub.getTopic().c_str());
@@ -417,10 +430,10 @@ void DynamicModelPlugin::segmentateMap() {
     current_angles[1] = fmod(pitch_angles[i - 1] + n_steps * xyzrpy_steps[4] + 2 * M_PI, 2 * M_PI);
     current_angles[2] = fmod(yaw_angles[i - 1] + n_steps * xyzrpy_steps[5] + 2 * M_PI, 2 * M_PI);
   }
-  
+
   segmented_trajectory = local_segmented_trajectory;
-  trajectory_pointer = 0;
-  current_pose       = segmented_trajectory[trajectory_pointer];
+  trajectory_pointer   = 0;
+  current_pose         = segmented_trajectory[trajectory_pointer];
   moveModel();
 
   ROS_INFO("[%s]: Trajectory segmented.", ros::this_node::getName().c_str());

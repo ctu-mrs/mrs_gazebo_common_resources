@@ -92,6 +92,7 @@
 #include <gazebo/transport/Node.hh>
 
 #include <sensor_msgs/PointCloud2.h>
+#include <std_msgs/Empty.h>
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf/tf.h>
@@ -200,6 +201,15 @@ namespace gazebo
         min_intensity_ = _sdf->GetElement("min_intensity")->Get<double>();
       }
 
+      if (!_sdf->HasElement("ordered"))
+      {
+        ROS_INFO("3D laser plugin missing <ordered>, defaults to false");
+        ordered_ = false;
+      } else
+      {
+        ordered_ = _sdf->GetElement("ordered")->Get<bool>();
+      }
+
       if (!_sdf->HasElement("topicName"))
       {
         ROS_INFO("3D laser plugin missing <topicName>, defaults to /points");
@@ -207,6 +217,15 @@ namespace gazebo
       } else
       {
         topic_name_ = _sdf->GetElement("topicName")->Get<std::string>();
+      }
+
+      if (!_sdf->HasElement("topicDiagName"))
+      {
+        ROS_INFO("3D laser plugin missing <topicDiagName>, defaults to /laser_diag");
+        topic_diag_name_ = "/laser_diag";
+      } else
+      {
+        topic_diag_name_ = _sdf->GetElement("topicDiagName")->Get<std::string>();
       }
 
       if (!_sdf->HasElement("gaussianNoise"))
@@ -453,6 +472,7 @@ namespace gazebo
 
       // Create node handle
       nh_ = ros::NodeHandle(robot_namespace_);
+      m_processing_scan = false;
 
       // Advertise publisher with a custom callback queue
       if (topic_name_ != "")
@@ -460,6 +480,11 @@ namespace gazebo
         ros::AdvertiseOptions ao = ros::AdvertiseOptions::create<sensor_msgs::PointCloud2>(
             topic_name_, 1, boost::bind(&GazeboRos3DLaser::ConnectCb, this), boost::bind(&GazeboRos3DLaser::ConnectCb, this), ros::VoidPtr(), &laser_queue_);
         pub_ = nh_.advertise(ao);
+      }
+
+      if (topic_diag_name_ != "")
+      {
+        pub_diag_ = nh_.advertise<std_msgs::Empty>(topic_diag_name_, 1);
       }
 
       // Sensor generation off by default
@@ -611,10 +636,18 @@ namespace gazebo
 
     /* OnScan() //{ */
 
+    std::atomic_bool m_processing_scan;
+
     void OnScan(const ConstLaserScanStampedPtr& msg)
     {
-      std::thread t(&GazeboRos3DLaser::processScan, this, msg);
-      t.detach();
+      // make sure that only one scan is being processed at a time to avoid clogging the CPU
+      // (rather throttle the scans)
+      if (!m_processing_scan)
+      {
+        m_processing_scan = true;
+        std::thread t(&GazeboRos3DLaser::processScan, this, msg);
+        t.detach();
+      }
     }
 
     void processScan(const ConstLaserScanStampedPtr& _msg)
@@ -642,7 +675,7 @@ namespace gazebo
       sensor_msgs::PointCloud2 msg;
       msg.header.frame_id = lidar_frame_name_;
       msg.header.stamp = ros::Time(_msg->time().sec(), _msg->time().nsec());
-      msg.fields.resize(5);
+      msg.fields.resize(6);
       msg.fields[0].name = "x";
       msg.fields[0].offset = 0;
       msg.fields[0].datatype = sensor_msgs::PointField::FLOAT32;
@@ -661,32 +694,48 @@ namespace gazebo
       msg.fields[3].count = 1;
       msg.fields[4].name = "ring";
       msg.fields[4].offset = 20;
-      msg.fields[4].datatype = sensor_msgs::PointField::UINT16;
+      msg.fields[4].datatype = sensor_msgs::PointField::UINT8;
       msg.fields[4].count = 1;
+      msg.fields[5].name = "range";
+      msg.fields[5].offset = 24;
+      msg.fields[5].datatype = sensor_msgs::PointField::UINT32;
+      msg.fields[5].count = 1;
       msg.data.resize(verticalRangeCount * rangeCount * POINT_STEP);
 
       uint8_t* ptr = msg.data.data();
       const bool apply_gaussian_noise = gaussian_noise_ != 0;
+      if (_msg->scan().ranges_size() != rangeCount*verticalRangeCount)
+        ROS_ERROR("3D laser plugin: scan has unexpected size (%d, expected %d)", _msg->scan().ranges_size(), rangeCount*verticalRangeCount);
 
-      for (int i = 0; i < rangeCount; i++)
+      for (int hit = 0; hit < rangeCount; hit++)
       {
-        for (int j = 0; j < verticalRangeCount; j++)
+        // so that it starts from the top angle and goes down (according to Ouster data ordering)
+        for (int j = verticalRangeCount-1; j >= 0; j--)
         {
+          // ensure that the points are ordered starting from the angle 0 and goes up to 2*pi
+          int i = rangeCount/2 - hit;
+          if (i < 0)
+            i += rangeCount;
 
           // Range
           double r = _msg->scan().ranges(i + j * rangeCount);
 
           // Intensity
-          const double intensity = _msg->scan().intensities(i + j * rangeCount);
-
-          // Ignore points that lay outside range bands or optionally, beneath a
-          // minimum intensity level.
-          if ((MIN_RANGE >= r) || (r >= MAX_RANGE) || (intensity < MIN_INTENSITY))
-            continue;
+          const float intensity = _msg->scan().intensities(i + j * rangeCount);
 
           // Noise
           if (apply_gaussian_noise)
             r += gaussianKernel(0, gaussian_noise_);
+
+          // Ignore points that lay outside range bands or optionally, beneath a
+          // minimum intensity level.
+          if ((MIN_RANGE >= r) || (r >= MAX_RANGE) || (intensity < MIN_INTENSITY))
+          {
+            if (ordered_)
+              r = 0.0;
+            else
+              continue;
+          }
 
           const auto [x_coeff, y_coeff, z_coeff] = coord_coeffs_.at(i * verticalRangeCount + j);
 
@@ -696,10 +745,11 @@ namespace gazebo
           *((float*)(ptr + 8)) = r * z_coeff;
           *((float*)(ptr + 16)) = intensity;
 #if GAZEBO_MAJOR_VERSION > 2
-          *((uint16_t*)(ptr + 20)) = j;  // ring
+          *((uint8_t*)(ptr + 20)) = j;  // ring
 #else
-          *((uint16_t*)(ptr + 20)) = verticalRangeCount - 1 - j;  // ring
+          *((uint8_t*)(ptr + 20)) = verticalRangeCount - 1 - j;  // ring
 #endif
+          *((uint32_t*)(ptr + 24)) = static_cast<uint32_t>(1000.0*r);  // ring
           ptr += POINT_STEP;
         }
       }
@@ -717,8 +767,9 @@ namespace gazebo
       {
         boost::lock_guard<boost::mutex> lock(lock_);
         pub_.publish(msg);
-        std::cout << "publishing laser message" << std::endl;
+        pub_diag_.publish(std_msgs::Empty());
       }
+      m_processing_scan = false;
     }
 
     //}
@@ -748,8 +799,14 @@ namespace gazebo
     /// \brief ROS publisher
     ros::Publisher pub_;
 
+    /// \brief ROS publisher of diagnostics
+    ros::Publisher pub_diag_;
+
     /// \brief topic name
     std::string topic_name_;
+
+    /// \brief topic name of diagnostics
+    std::string topic_diag_name_;
 
     /// \brief Minimum range to publish
     double min_range_;
@@ -759,6 +816,9 @@ namespace gazebo
 
     /// \brief Minimum intensity to publish
     double min_intensity_;
+
+    /// \brief Whether the cloud should be ordered (dense) - invalid points will not be dropped, but will be [0,0,0]
+    bool ordered_;
 
     /// \brief Gaussian noise
     double gaussian_noise_;
