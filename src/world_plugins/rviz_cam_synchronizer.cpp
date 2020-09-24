@@ -117,7 +117,7 @@ void CamSynchronizer::callbackGazeboCameraPose(const GazeboPoseConstPtr& msg) {
 void CamSynchronizer::callbackGazeboTargetPose(const GazeboPosesStampedConstPtr& msg) {
   for (int i = 0; i < msg->pose_size(); i++) {
     if (msg->pose(i).name() == _frame_to_follow_) {
-      std::scoped_lock(mutex_target_position_);
+      std::scoped_lock lock(mutex_target_position_);
       target_position_.X() = msg->pose(i).position().x();
       target_position_.Y() = msg->pose(i).position().y();
       target_position_.Z() = msg->pose(i).position().z();
@@ -132,7 +132,7 @@ void CamSynchronizer::callbackGazeboTargetPose(const GazeboPosesStampedConstPtr&
 /* getCamOrientation(...)//{ */
 
 ignition::math::Quaterniond CamSynchronizer::getCamOrientation(const ignition::math::Vector3d& cam_pose) {
-  std::scoped_lock(mutex_target_position_);
+  std::scoped_lock lock(mutex_target_position_);
   ignition::math::Matrix4d rotation_matrix = ignition::math::Matrix4d::LookAt(cam_pose, target_position_);
   return rotation_matrix.Rotation();
 }
