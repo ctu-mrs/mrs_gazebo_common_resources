@@ -39,6 +39,7 @@ private:
 
   // ROS publisher
   tf2_ros::TransformBroadcaster* broadcaster_;
+  ros::Time                last_msg_timestamp_; // default constructor fills  sec(0), nsec(0)
 
   // parameters
   std::string _target_frame_id_;
@@ -132,7 +133,7 @@ void CamSynchronizer::callbackGazeboTargetPose(const GazeboPosesStampedConstPtr&
 /* getCamOrientation(...)//{ */
 
 ignition::math::Quaterniond CamSynchronizer::getCamOrientation(const ignition::math::Vector3d& cam_pose) {
-  std::scoped_lock lock(mutex_target_position_);
+  std::scoped_lock         lock(mutex_target_position_);
   ignition::math::Matrix4d rotation_matrix = ignition::math::Matrix4d::LookAt(cam_pose, target_position_);
   return rotation_matrix.Rotation();
 }
@@ -171,12 +172,19 @@ geometry_msgs::Transform CamSynchronizer::pose2transform(const ignition::math::P
 /* publishTF(...) //{ */
 
 void CamSynchronizer::publishTF(const ignition::math::Pose3d& cam_pose) {
+  ros::Time current_time = ros::Time::now();
+  if (!(current_time > last_msg_timestamp_)) {
+    return;
+  }
+
   geometry_msgs::TransformStamped tf;
   tf.header.frame_id = _world_origin_frame_id_;
-  tf.header.stamp    = ros::Time::now();
+  tf.header.stamp    = current_time;
   tf.child_frame_id  = _target_frame_id_;
   tf.transform       = pose2transform(cam_pose);
   broadcaster_->sendTransform(tf);
+
+  last_msg_timestamp_ = current_time;
 }
 
 //}
