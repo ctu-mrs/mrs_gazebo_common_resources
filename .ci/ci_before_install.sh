@@ -50,9 +50,6 @@ PACKAGE_NAME=${PWD##*/}
 cd ~/simulation/.gitman/$PACKAGE_NAME
 git checkout "$SHA"
 
-# will need this to test the compilation
-sudo apt-get -y install python-catkin-tools
-
 echo "creating workspace"
 mkdir -p ~/catkin_ws/src
 cd ~/catkin_ws/src
