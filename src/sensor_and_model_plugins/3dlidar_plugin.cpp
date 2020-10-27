@@ -413,6 +413,8 @@ namespace gazebo
 
         const ignition::math::Angle verticalMaxAngle = parent_ray_sensor_->VerticalAngleMax();
         const ignition::math::Angle verticalMinAngle = parent_ray_sensor_->VerticalAngleMin();
+
+        update_period_ = 1.0 / parent_ray_sensor_->UpdateRate();
 #else
         math::Angle maxAngle = parent_ray_sensor_->GetAngleMax();
         math::Angle minAngle = parent_ray_sensor_->GetAngleMin();
@@ -422,6 +424,8 @@ namespace gazebo
 
         const math::Angle verticalMaxAngle = parent_ray_sensor_->GetVerticalAngleMax();
         const math::Angle verticalMinAngle = parent_ray_sensor_->GetVerticalAngleMin();
+
+        update_period_ = 1.0 / parent_ray_sensor_->GetUpdateRate();
 #endif
 
         const double yDiff = maxAngle.Radian() - minAngle.Radian();
@@ -496,9 +500,9 @@ namespace gazebo
       this->load_thread_ = boost::thread(boost::bind(&GazeboRos3DLaser::TransformThread, this));
 
 #if GAZEBO_MAJOR_VERSION >= 7
-      ROS_INFO("3D %slaser plugin ready, %i lasers", STR_GPU_, parent_ray_sensor_->VerticalRangeCount());
+      ROS_INFO("3D %slaser plugin ready - rows: %i, update period: %0.1f ms", STR_GPU_, parent_ray_sensor_->VerticalRangeCount(), 1000.0 * update_period_);
 #else
-      ROS_INFO("3D %slaser plugin ready, %i lasers", STR_GPU_, parent_ray_sensor_->GetVerticalRangeCount());
+      ROS_INFO("3D %slaser plugin ready - rows: %i, update period: %0.1f ms", STR_GPU_, parent_ray_sensor_->GetVerticalRangeCount(), 1000.0 * update_period_);
 #endif
     }
 
@@ -670,12 +674,13 @@ namespace gazebo
       const double MAX_RANGE = std::min(max_range_, maxRange);
       const double MIN_INTENSITY = min_intensity_;
 
+
       // Populate message fields
-      const uint32_t POINT_STEP = 21;
+      const uint32_t POINT_STEP = 25;
       sensor_msgs::PointCloud2 msg;
       msg.header.frame_id = lidar_frame_name_;
       msg.header.stamp = ros::Time(_msg->time().sec(), _msg->time().nsec());
-      msg.fields.resize(6);
+      msg.fields.resize(7);
       msg.fields[0].name = "x";
       msg.fields[0].offset = 0;
       msg.fields[0].datatype = sensor_msgs::PointField::FLOAT32;
@@ -700,6 +705,10 @@ namespace gazebo
       msg.fields[5].offset = 17;
       msg.fields[5].datatype = sensor_msgs::PointField::UINT32;
       msg.fields[5].count = 1;
+      msg.fields[6].name = "t";
+      msg.fields[6].offset = 21;
+      msg.fields[6].datatype = sensor_msgs::PointField::UINT32;
+      msg.fields[6].count = 1;
       msg.data.resize(verticalRangeCount * rangeCount * POINT_STEP);
 
       uint8_t* ptr = msg.data.data();
@@ -707,8 +716,13 @@ namespace gazebo
       if (_msg->scan().ranges_size() != rangeCount*verticalRangeCount)
         ROS_ERROR("3D laser plugin: scan has unexpected size (%d, expected %d)", _msg->scan().ranges_size(), rangeCount*verticalRangeCount);
 
+      const uint32_t time_col_step_ns = 1e9 * update_period_ / (double(rangeCount) - 1.0);
+
       for (int hit = 0; hit < rangeCount; hit++)
       {
+        // Interpolate time of points for this column (assume lidar rotates with constant velocity around its z-axis and completes one revolution in update_period_)
+        const uint32_t time_col = uint32_t(hit) * time_col_step_ns;
+
         // so that it starts from the top angle and goes down (according to Ouster data ordering)
         for (int j = verticalRangeCount-1; j >= 0; j--)
         {
@@ -750,6 +764,7 @@ namespace gazebo
           *((uint8_t*)(ptr + 16)) = static_cast<uint8_t>(verticalRangeCount - 1 - j);  // ring
 #endif
           *((uint32_t*)(ptr + 17)) = static_cast<uint32_t>(1000.0*r);  // range in mm
+          *((uint32_t*)(ptr + 21)) = time_col;  // time
           ptr += POINT_STEP;
         }
       }
@@ -825,6 +840,9 @@ namespace gazebo
 
     /// \brief Sensor has imu
     bool imu_;
+
+    /// \brief Sensor update period
+    double update_period_;
 
     /// \brief Gaussian noise generator
     static double gaussianKernel(double mu, double sigma)
