@@ -671,7 +671,7 @@ namespace gazebo
       const double MIN_INTENSITY = min_intensity_;
 
       // Populate message fields
-      const uint32_t POINT_STEP = 32;
+      const uint32_t POINT_STEP = 21;
       sensor_msgs::PointCloud2 msg;
       msg.header.frame_id = lidar_frame_name_;
       msg.header.stamp = ros::Time(_msg->time().sec(), _msg->time().nsec());
@@ -689,15 +689,15 @@ namespace gazebo
       msg.fields[2].datatype = sensor_msgs::PointField::FLOAT32;
       msg.fields[2].count = 1;
       msg.fields[3].name = "intensity";
-      msg.fields[3].offset = 16;
+      msg.fields[3].offset = 12;
       msg.fields[3].datatype = sensor_msgs::PointField::FLOAT32;
       msg.fields[3].count = 1;
       msg.fields[4].name = "ring";
-      msg.fields[4].offset = 20;
+      msg.fields[4].offset = 16;
       msg.fields[4].datatype = sensor_msgs::PointField::UINT8;
       msg.fields[4].count = 1;
       msg.fields[5].name = "range";
-      msg.fields[5].offset = 24;
+      msg.fields[5].offset = 17;
       msg.fields[5].datatype = sensor_msgs::PointField::UINT32;
       msg.fields[5].count = 1;
       msg.data.resize(verticalRangeCount * rangeCount * POINT_STEP);
@@ -743,13 +743,13 @@ namespace gazebo
           *((float*)(ptr + 0)) = r * x_coeff;
           *((float*)(ptr + 4)) = r * y_coeff;
           *((float*)(ptr + 8)) = r * z_coeff;
-          *((float*)(ptr + 16)) = intensity;
+          *((float*)(ptr + 12)) = intensity;
 #if GAZEBO_MAJOR_VERSION > 2
-          *((uint8_t*)(ptr + 20)) = j;  // ring
+          *((uint8_t*)(ptr + 16)) = static_cast<uint8_t>(j);  // ring
 #else
-          *((uint8_t*)(ptr + 20)) = verticalRangeCount - 1 - j;  // ring
+          *((uint8_t*)(ptr + 16)) = static_cast<uint8_t>(verticalRangeCount - 1 - j);  // ring
 #endif
-          *((uint32_t*)(ptr + 24)) = static_cast<uint32_t>(1000.0*r);  // ring
+          *((uint32_t*)(ptr + 17)) = static_cast<uint32_t>(1000.0*r);  // range in mm
           ptr += POINT_STEP;
         }
       }
