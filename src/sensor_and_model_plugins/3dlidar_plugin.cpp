@@ -674,7 +674,6 @@ namespace gazebo
       const double MAX_RANGE = std::min(max_range_, maxRange);
       const double MIN_INTENSITY = min_intensity_;
 
-
       // Populate message fields
       const uint32_t POINT_STEP = 25;
       sensor_msgs::PointCloud2 msg;
@@ -716,13 +715,8 @@ namespace gazebo
       if (_msg->scan().ranges_size() != rangeCount*verticalRangeCount)
         ROS_ERROR("3D laser plugin: scan has unexpected size (%d, expected %d)", _msg->scan().ranges_size(), rangeCount*verticalRangeCount);
 
-      const uint32_t time_col_step_ns = 1e9 * update_period_ / (double(rangeCount) - 1.0);
-
       for (int hit = 0; hit < rangeCount; hit++)
       {
-        // Interpolate time of points for this column (assume lidar rotates with constant velocity around its z-axis and completes one revolution in update_period_)
-        const uint32_t time_col = uint32_t(hit) * time_col_step_ns;
-
         // so that it starts from the top angle and goes down (according to Ouster data ordering)
         for (int j = verticalRangeCount-1; j >= 0; j--)
         {
@@ -764,7 +758,7 @@ namespace gazebo
           *((uint8_t*)(ptr + 16)) = static_cast<uint8_t>(verticalRangeCount - 1 - j);  // ring
 #endif
           *((uint32_t*)(ptr + 17)) = static_cast<uint32_t>(1000.0*r);  // range in mm
-          *((uint32_t*)(ptr + 21)) = time_col;  // time
+          *((uint32_t*)(ptr + 21)) = static_cast<uint32_t>(0);  // time: in sim, the lidar is not rotating and all the points are taken at the same time
           ptr += POINT_STEP;
         }
       }
