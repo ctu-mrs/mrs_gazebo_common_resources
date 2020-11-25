@@ -729,7 +729,7 @@ namespace gazebo
           double r = _msg->scan().ranges(i + j * rangeCount);
 
           // Intensity
-          const float intensity = _msg->scan().intensities(i + j * rangeCount);
+          float intensity = _msg->scan().intensities(i + j * rangeCount);
 
           // Noise
           if (apply_gaussian_noise)
@@ -739,10 +739,12 @@ namespace gazebo
           // minimum intensity level.
           if ((MIN_RANGE >= r) || (r >= MAX_RANGE) || (intensity < MIN_INTENSITY))
           {
-            if (ordered_)
-              r = 0.0;
-            else
+            if (ordered_) {
+              r         = 0.0;
+              intensity = 0.0f;
+            } else {
               continue;
+            }
           }
 
           const auto [x_coeff, y_coeff, z_coeff] = coord_coeffs_.at(i * verticalRangeCount + j);
@@ -765,12 +767,19 @@ namespace gazebo
 
       // Populate message with number of valid points
       msg.point_step = POINT_STEP;
-      msg.row_step = ptr - msg.data.data();
-      msg.height = 1;
-      msg.width = msg.row_step / POINT_STEP;
       msg.is_bigendian = false;
-      msg.is_dense = true;
-      msg.data.resize(msg.row_step);  // Shrink to actual size
+      if (ordered_) {
+        msg.height = verticalRangeCount;
+        msg.width = rangeCount;
+        msg.row_step = msg.width * POINT_STEP;
+        msg.is_dense = false;
+      } else {
+        msg.height = 1;
+        msg.width = msg.row_step / POINT_STEP;
+        msg.row_step = ptr - msg.data.data();
+        msg.data.resize(msg.row_step);  // Shrink to actual size
+        msg.is_dense = true;
+      }
 
       // Publish output
       {
