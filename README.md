@@ -1,4 +1,4 @@
-# MRS resources for Gazebo [![Build Status](https://github.com/ctu-mrs/mrs_gazebo_common_resources/workflows/CI/badge.svg)](https://github.com/ctu-mrs/mrs_gazebo_common_resources/actions)
+# MRS resources for Gazebo
 
 | Build status | [![Build Status](https://github.com/ctu-mrs/mrs_gazebo_common_resources/workflows/Melodic/badge.svg)](https://github.com/ctu-mrs/uagazebo_common_resourcesv_core/actions) | [![Build Status](https://github.com/ctu-mrs/uavgazebo_common_resources_core/workflows/Noetic/badge.svg)](https://github.com/ctu-mrs/uagazebo_common_resourcesv_core/actions) |
 |--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
