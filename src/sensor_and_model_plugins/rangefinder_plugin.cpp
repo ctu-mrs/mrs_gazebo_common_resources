@@ -349,7 +349,14 @@ void GazeboRosRange::LoadThread() {
                                                           boost::bind(&GazeboRosRange::RangeDisconnect, this), ros::VoidPtr(), &this->range_queue_);
     this->pub_ = this->rosnode_->advertise(ao);
 
-    this->tf_pub_ = this->rosnode_->advertise<tf2_msgs::TFMessage>("/tf_gazebo_static", 100, true);
+    std::stringstream ss1, ss2;
+    ss1 << std::getenv("ROS_DISTRO");
+    ss2 << "melodic";
+    if (ss1.str() == ss2.str()) {
+      this->tf_pub_ = this->rosnode_->advertise<tf2_msgs::TFMessage>("/tf_gazebo_static", 100, true);
+    } else {
+      this->tf_pub_ = this->rosnode_->advertise<tf2_msgs::TFMessage>("/tf_static", 100, true); // for noetic
+    }
 
     createStaticTransforms();
     this->timer_ = this->rosnode_->createWallTimer(ros::WallDuration(1.0), &GazeboRosRange::publishStaticTransforms, this);
