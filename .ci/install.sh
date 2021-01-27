@@ -51,7 +51,7 @@ echo "creating workspace"
 mkdir -p ~/catkin_ws/src
 cd ~/catkin_ws/src
 ln -s ~/simulation
-ln -s ~/uav_core
+ln -s ~/uav_core/ros_packages/mavros
 source /opt/ros/$ROS_DISTRO/setup.bash
 cd ~/catkin_ws
 catkin init
