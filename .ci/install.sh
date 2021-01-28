@@ -52,6 +52,7 @@ mkdir -p ~/catkin_ws/src
 cd ~/catkin_ws/src
 ln -s ~/simulation
 ln -s ~/uav_core/ros_packages/mavros
+ln -s ~/uav_core/ros_packages/mrs_msgs
 source /opt/ros/$ROS_DISTRO/setup.bash
 cd ~/catkin_ws
 catkin init
