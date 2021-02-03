@@ -715,51 +715,45 @@ namespace gazebo
       if (_msg->scan().ranges_size() != rangeCount*verticalRangeCount)
         ROS_ERROR("3D laser plugin: scan has unexpected size (%d, expected %d)", _msg->scan().ranges_size(), rangeCount*verticalRangeCount);
 
-      for (int hit = 0; hit < rangeCount; hit++)
-      {
-        // so that it starts from the top angle and goes down (according to Ouster data ordering)
-        for (int j = verticalRangeCount-1; j >= 0; j--)
-        {
-          // ensure that the points are ordered starting from the angle 0 and goes up to 2*pi
-          int i = rangeCount/2 - hit;
-          if (i < 0)
-            i += rangeCount;
 
+    for (int row = 0; row < verticalRangeCount; row++) {
+        for (int col = 0; col < rangeCount; col++) {
+        
           // Range
-          double r = _msg->scan().ranges(i + j * rangeCount);
+          double range = _msg->scan().ranges(col + row * rangeCount);
 
           // Intensity
-          float intensity = _msg->scan().intensities(i + j * rangeCount);
+          float intensity = _msg->scan().intensities(col + row * rangeCount);
 
           // Noise
           if (apply_gaussian_noise)
-            r += gaussianKernel(0, gaussian_noise_);
+            range += gaussianKernel(0, gaussian_noise_);
 
           // Ignore points that lay outside range bands or optionally, beneath a
           // minimum intensity level.
-          if ((MIN_RANGE >= r) || (r >= MAX_RANGE) || (intensity < MIN_INTENSITY))
+          if ((MIN_RANGE >= range) || (range >= MAX_RANGE) || (intensity < MIN_INTENSITY))
           {
             if (ordered_) {
-              r         = 0.0;
+              range     = 0.0;
               intensity = 0.0f;
             } else {
               continue;
             }
           }
 
-          const auto [x_coeff, y_coeff, z_coeff] = coord_coeffs_.at(i * verticalRangeCount + j);
+          const auto [x_coeff, y_coeff, z_coeff] = coord_coeffs_.at(col * verticalRangeCount + row);
 
           // pAngle is rotated by yAngle:
-          *((float*)(ptr + 0)) = r * x_coeff;
-          *((float*)(ptr + 4)) = r * y_coeff;
-          *((float*)(ptr + 8)) = r * z_coeff;
+          *((float*)(ptr + 0)) = range * x_coeff;
+          *((float*)(ptr + 4)) = range * y_coeff;
+          *((float*)(ptr + 8)) = range * z_coeff;
           *((float*)(ptr + 12)) = intensity;
 #if GAZEBO_MAJOR_VERSION > 2
-          *((uint8_t*)(ptr + 16)) = static_cast<uint8_t>(j);  // ring
+          *((uint8_t*)(ptr + 16)) = static_cast<uint8_t>(row);  // ring
 #else
-          *((uint8_t*)(ptr + 16)) = static_cast<uint8_t>(verticalRangeCount - 1 - j);  // ring
+          *((uint8_t*)(ptr + 16)) = static_cast<uint8_t>(verticalRangeCount - 1 - row);  // ring
 #endif
-          *((uint32_t*)(ptr + 17)) = static_cast<uint32_t>(1000.0*r);  // range in mm
+          *((uint32_t*)(ptr + 17)) = static_cast<uint32_t>(1000.0*range);  // range in mm
           *((uint32_t*)(ptr + 21)) = static_cast<uint32_t>(0);  // time: in sim, the lidar is not rotating and all the points are taken at the same time
           ptr += POINT_STEP;
         }
