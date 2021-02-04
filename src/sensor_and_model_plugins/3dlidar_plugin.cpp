@@ -677,7 +677,7 @@ namespace gazebo
       // Populate message fields
       const uint32_t POINT_STEP = 25;
       sensor_msgs::PointCloud2 msg;
-      msg.header.frame_id = lidar_frame_name_;
+      msg.header.frame_id = sensor_frame_name_;
       msg.header.stamp = ros::Time(_msg->time().sec(), _msg->time().nsec());
       msg.fields.resize(7);
       msg.fields[0].name = "x";
