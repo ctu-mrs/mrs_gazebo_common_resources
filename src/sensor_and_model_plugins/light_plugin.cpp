@@ -38,12 +38,13 @@ public:
 private:
   physics::ModelPtr  model;
   ros::NodeHandle *  nh;
-  ros::ServiceServer trigger_srv;
+  ros::ServiceServer trigger_srv, tilt_compensation_srv;
   ros::ServiceClient spawn_srv, delete_srv, change_state_srv;
   ros::Subscriber    pitch_sub;
   ros::Timer         light_timer;
 
   bool triggerCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
+  bool triggerTiltCompensationCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
   void pitchCallback(const std_msgs::Float32 &desired_pitch);
   void odomCallback(const nav_msgs::OdometryPtr &odom);
 
@@ -62,6 +63,7 @@ private:
   bool                   light_spawned;
   bool                   light_attached;
   bool                   initial_on;
+  bool                   compensate_tilt;
   double                 offset_roll;
   double                 offset_pitch;
   double                 offset_yaw;
@@ -143,6 +145,11 @@ void GazeboLightPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
     ROS_WARN("[%s][Light]: Initial_on not defined. Setting to defalt value.", parent_name.c_str());
     initial_on = true;
   }
+  if (_sdf->HasElement("compensate_tilt")) {
+    compensate_tilt = _sdf->Get<bool>("compensate_tilt");
+  } else {
+    ROS_WARN("[%s][Light]: Tilt compensation not defined.", parent_name.c_str());
+  }
 
   convertEulerToQuaternion(offset_roll, offset_pitch, offset_yaw);
 
@@ -166,6 +173,9 @@ void GazeboLightPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   ss.str(std::string());
   ss << "/" << parent_name << "/light/trigger";
   trigger_srv = nh->advertiseService(ss.str().c_str(), &GazeboLightPlugin::triggerCallback, this);
+  ss.str(std::string());
+  ss << "/" << parent_name << "/light/compensate_tilt";
+  tilt_compensation_srv = nh->advertiseService(ss.str().c_str(), &GazeboLightPlugin::triggerTiltCompensationCallback, this);
 
   light_spawned  = false;
   light_attached = false;
@@ -218,12 +228,27 @@ bool GazeboLightPlugin::triggerCallback(std_srvs::SetBoolRequest &req, std_srvs:
       light_attached = true;
       moveLight(false);
     }
+    res.message = "light turned on";
   } else {
     if (light_spawned) {
       light_attached = false;
       moveLight(true);
     }
+    res.message = "light turned off";
   }
+
+  res.success = true;
+  return res.success;
+}
+//}
+
+/* triggerTiltCompensationCallback() */  //{
+bool GazeboLightPlugin::triggerTiltCompensationCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
+  ROS_INFO("[%s][Light]: Trigger tilt compensation!", parent_name.c_str());
+
+  compensate_tilt = req.data;
+  res.message = compensate_tilt ? "tilt compensation enabled" : "tilt compensation disabled";
+  ROS_WARN("[%s][Light]: %s.", parent_name.c_str(), res.message.c_str());
 
   res.success = true;
   return res.success;
@@ -351,8 +376,17 @@ void GazeboLightPlugin::moveLightPanelOnly() {
 
 /* updateLightPosition() //{ */
 void GazeboLightPlugin::updateLightPosition() {
-  spawn_point.Rot() = model->WorldPose().Rot() * offset.Rot();
-  spawn_point.Pos() = model->WorldPose().Pos() + model->WorldPose().Rot() * offset.Pos();
+  ignition::math::Pose3d model_pose = model->WorldPose();
+
+  if (compensate_tilt) { // simulates perfect stabilization of pitch and roll angles
+    ignition::math::Vector3d dir = ignition::math::Vector3d(1.0, 0.0, 0.0);
+    dir                          = model->WorldPose().Rot() * dir;
+    double heading               = atan2(dir.Y(), dir.X());
+    model_pose.Rot()             = ignition::math::Quaternion<double>(0.0, 0.0, heading);
+  }
+
+  spawn_point.Rot() = model_pose.Rot() * offset.Rot();
+  spawn_point.Pos() = model_pose.Pos() + model_pose.Rot() * offset.Pos();
 }
 //}
 

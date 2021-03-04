@@ -6,13 +6,13 @@
       <sensor type="camera" name="servo_camera">
         <update_rate>30</update_rate>
         <camera name="head">
-          <horizontal_fov>2.1</horizontal_fov>
+          <horizontal_fov>1.5</horizontal_fov>
           <image>
             <width>1920</width>
             <height>1080</height>
           </image>
           <clip>
-            <near>0.05</near>
+            <near>0.35</near>
             <far>100</far>
           </clip>
           <noise>

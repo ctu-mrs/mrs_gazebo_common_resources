@@ -38,11 +38,13 @@ public:
 private:
   physics::ModelPtr  model;
   ros::NodeHandle *  nh;
+  ros::ServiceServer tilt_compensation_srv;
   ros::ServiceClient spawn_srv, change_state_srv;
   ros::Subscriber    pitch_sub;
   ros::Timer         camera_timer;
 
   void pitchCallback(const std_msgs::Float32 &desired_pitch);
+  bool triggerTiltCompensationCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
 
   void updateCameraPosition();
   void OnUpdate();
@@ -66,6 +68,7 @@ private:
   double                 spawn_delay_sec = 5.0;
   int                    spawn_delay_remaining_loops;
   bool                   camera_spawned;
+  bool                   compensate_tilt;
 
   event::ConnectionPtr updateConnection;
 };
@@ -74,7 +77,7 @@ private:
 /* Load */  //{
 void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   ROS_INFO("[%s]: Servo camera plugin started.", ros::this_node::getName().c_str());
-  model       = _parent;
+  model        = _parent;
   parent_name  = model->GetName().c_str();
   offset_yaw   = 0.0;
   offset_pitch = 0.0;
@@ -89,8 +92,7 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
     camera_type = "servo_camera";
   }
 
-  camera_model_path << ros::package::getPath("mrs_gazebo_common_resources") << "/models/" << camera_type
-                    << "/model.sdf";
+  camera_model_path << ros::package::getPath("mrs_gazebo_common_resources") << "/models/" << camera_type << "/model.sdf";
   ROS_INFO("[%s][Servo camera]: trying to open file %s", parent_name.c_str(), camera_model_path.str().c_str());
   try {
     camera_model = sdf::readFile(camera_model_path.str())->ToString();
@@ -147,6 +149,11 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   } else {
     ROS_WARN("[%s][Servo camera]: Joint name not defined.", parent_name.c_str());
   }
+  if (_sdf->HasElement("compensate_tilt")) {
+    compensate_tilt = _sdf->Get<bool>("compensate_tilt");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Tilt compensation not defined.", parent_name.c_str());
+  }
 
   convertEulerToQuaternion(offset_roll, offset_pitch, offset_yaw);
 
@@ -163,6 +170,9 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   std::stringstream ss;
   ss << "/" << parent_name << "/servo_camera/set_pitch";
   pitch_sub = nh->subscribe(ss.str().c_str(), 1, &ServoCameraPlugin::pitchCallback, this);
+  ss.str(std::string());
+  ss << "/" << parent_name << "/servo_camera/compensate_tilt";
+  tilt_compensation_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationCallback, this);
 
   spawn_delay_remaining_loops = spawn_delay_sec * update_rate;
   camera_spawned              = false;
@@ -220,6 +230,19 @@ void ServoCameraPlugin::cameraTimerCallback(const ros::TimerEvent &event) {
 void ServoCameraPlugin::pitchCallback(const std_msgs::Float32 &msg) {
   /* ROS_INFO("[%s][Servo camera]: Change camera pitch!", parent_name.c_str()); */
   desired_pitch = fmod(msg.data + 2 * M_PI, 2 * M_PI);
+}
+//}
+
+/* triggerTiltCompensationCallback() */  //{
+bool ServoCameraPlugin::triggerTiltCompensationCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
+  ROS_INFO("[%s][Servo camera]: Trigger tilt compensation!", parent_name.c_str());
+
+  compensate_tilt = req.data;
+  res.message = compensate_tilt ? "tilt compensation enabled" : "tilt compensation disabled";
+  ROS_WARN("[%s][Servo Camera]: %s.", parent_name.c_str(), res.message.c_str());
+
+  res.success = true;
+  return res.success;
 }
 //}
 
@@ -281,8 +304,17 @@ void ServoCameraPlugin::moveCamera() {
 
 /* updateCameraPosition() //{ */
 void ServoCameraPlugin::updateCameraPosition() {
-  spawn_point.Rot() = model->WorldPose().Rot() * offset.Rot();
-  spawn_point.Pos() = model->WorldPose().Pos() + model->WorldPose().Rot() * offset.Pos();
+  ignition::math::Pose3d model_pose = model->WorldPose();
+
+  if (compensate_tilt) { // simulates perfect stabilization of pitch and roll angles
+    ignition::math::Vector3d dir = ignition::math::Vector3d(1.0, 0.0, 0.0);
+    dir                          = model->WorldPose().Rot() * dir;
+    double heading               = atan2(dir.Y(), dir.X());
+    model_pose.Rot()             = ignition::math::Quaternion<double>(0.0, 0.0, heading);
+  }
+
+  spawn_point.Rot() = model_pose.Rot() * offset.Rot();
+  spawn_point.Pos() = model_pose.Pos() + model_pose.Rot() * offset.Pos();
 }
 //}
 
