@@ -219,14 +219,20 @@ After building, activate by adding the following to your robot definition.
         <max_pitch_rate>${max_pitch_rate}</max_pitch_rate>
         <joint_name>${name}_joint</joint_name>
         <camera_type>${camera_type}</camera_type>
+        <compensate_tilt>${compensate_tilt}</compensate_tilt>
       </plugin>
     </gazebo>
   ...
 ```
 
-The angle can be set by publishing desired camera angle on topic /uav_name/servo_camera/set_pitch e.g. 
+The angle can be set by publishing desired camera angle on topic /uav_name/servo_camera/set_pitch, e.g. 
 ```
 rostopic pub /uav1/servo_camera/set_pitch std_msgs/Float32 "data: 1.0"
+```
+
+The tilt compensation simulating perfect camera stabilization can be activated and deactivated by calling service /uav_name/servo_camera/compensate_tilt, e.g. 
+```
+rosservice call /uav1/servo_camera/compensate_tilt "data: true"
 ```
 
 The camera image is published on topic /servo_camera/image_raw.
@@ -272,18 +278,23 @@ After building, activate by adding the following to your robot definition.
         <update_rate>${update_rate}</update_rate>
         <max_pitch_rate>${max_pitch_rate}</max_pitch_rate>
         <initial_on>${initial_on}</initial_on>
+        <compensate_tilt>${compensate_tilt}</compensate_tilt>
       </plugin>
     </gazebo>
   ...
 ```
 
-The angle of light can be set by publishing desired angle on topic /uav_name/light/set_pitch e.g.
+The angle of light can be set by publishing desired angle on topic /uav_name/light/set_pitch, e.g.
 ```
 rostopic pub /uav1/light/set_pitch std_msgs/Float32 "data: 1.0"
 ```
 The light can be activated and deactivated by calling service
 ```
 rosservice call /uav1/light/trigger 1/0
+```
+The tilt compensation simulating perfect light stabilization can be activated and deactivated by calling service /uav_name/light/compensate_tilt, e.g. 
+```
+rosservice call /uav1/light/compensate_tilt "data: true"
 ```
 
 ## Dynamic model plugin
