@@ -768,10 +768,10 @@ namespace gazebo
         msg.row_step = msg.width * POINT_STEP;
         msg.is_dense = false;
       } else {
-        msg.height = 1;
-        msg.width = msg.row_step / POINT_STEP;
         msg.row_step = ptr - msg.data.data();
         msg.data.resize(msg.row_step);  // Shrink to actual size
+        msg.height = 1;
+        msg.width = msg.row_step / POINT_STEP;
         msg.is_dense = true;
       }
 
