@@ -144,6 +144,16 @@ namespace gazebo
       // Sensors Manager
       sensors::SensorManager* smanager = sensors::SensorManager::Instance();
 
+      std::string rs_namespace;
+      if (!_sdf->HasElement("realsense_namespace"))
+      {
+        ROS_INFO_NAMED("realsense", "realsense plugin missing <realsense_namespace>, defaults to \"\"");
+        rs_namespace = "";
+      } else {
+        rs_namespace = _sdf->Get<std::string>("realsense_namespace");
+        cameraNamespace = cameraNamespace + "/" + rs_namespace;
+      }
+
       depth_camera_plugin_name_ = cameraNamespace + "/" + DEPTH_CAMERA_SUFFIX;
       color_camera_plugin_name_ = cameraNamespace + "/" + COLOR_CAMERA_SUFFIX;
       ireds_camera_plugin_name_ = cameraNamespace + "/" + IREDS_CAMERA_SUFFIX;
@@ -233,15 +243,29 @@ namespace gazebo
       this->transportNode = transport::NodePtr(new transport::Node());
       this->transportNode->Init(this->world->Name());
 
+      std::string rs_prefix;
+      if (!_sdf->HasElement("realsense_namespace"))
+      {
+        gzwarn << "RealSensePlugin: cannot load the realsense_namespace parameter" << std::endl;
+        rs_prefix = "";
+      } else {
+        rs_prefix = _sdf->Get<std::string>("realsense_namespace");
+      }
+
       // Setup Publishers
       std::string rsTopicRoot =
           /* "~/rs_d435/"; */
           "~/" + this->rsModel->GetName() + "/rs/stream/";
 
-      this->depthPub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + DEPTH_CAMERA_TOPIC, 1, DEPTH_PUB_FREQ_HZ);
-      this->ired1Pub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + IRED1_CAMERA_TOPIC, 1, IRED1_PUB_FREQ_HZ);
-      this->ired2Pub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + IRED2_CAMERA_TOPIC, 1, IRED2_PUB_FREQ_HZ);
-      this->colorPub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + COLOR_CAMERA_TOPIC, 1, COLOR_PUB_FREQ_HZ);
+      /* this->depthPub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + rs_prefix + "/" + DEPTH_CAMERA_TOPIC, 1, DEPTH_PUB_FREQ_HZ); */
+      /* this->ired1Pub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + rs_prefix + "/" + IRED1_CAMERA_TOPIC, 1, IRED1_PUB_FREQ_HZ); */
+      /* this->ired2Pub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + rs_prefix + "/" + IRED2_CAMERA_TOPIC, 1, IRED2_PUB_FREQ_HZ); */
+      /* this->colorPub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + rs_prefix + "/" + COLOR_CAMERA_TOPIC, 1, COLOR_PUB_FREQ_HZ); */
+
+      this->depthPub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + DEPTH_CAMERA_TOPIC, 1, DEPTH_PUB_FREQ_HZ);
+      this->ired1Pub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + IRED1_CAMERA_TOPIC, 1, IRED1_PUB_FREQ_HZ);
+      this->ired2Pub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + IRED2_CAMERA_TOPIC, 1, IRED2_PUB_FREQ_HZ);
+      this->colorPub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + COLOR_CAMERA_TOPIC, 1, COLOR_PUB_FREQ_HZ);
 
       // Listen to depth camera new frame event
       if (this->useRealistic)
@@ -550,11 +574,28 @@ namespace gazebo
       cameraNamespace = _model->GetName();
       ROS_INFO_STREAM("Realsense camera attached to " << cameraNamespace);
 
-      depth_camera_frame_id_ = cameraNamespace + "/" + realsense_prefix + "/" + DEPTH_CAMERA_SUFFIX;
-      color_camera_frame_id_ = cameraNamespace + "/" + realsense_prefix + "/" + COLOR_CAMERA_SUFFIX;
-      ired1_camera_frame_id_ = cameraNamespace + "/" + realsense_prefix + "/" + IRED1_CAMERA_SUFFIX;
-      ired2_camera_frame_id_ = cameraNamespace + "/" + realsense_prefix + "/" + IRED2_CAMERA_SUFFIX;
-      base_frame_id_ = cameraNamespace + "/" + realsense_prefix + "/" + BASE_FRAME_SUFFIX;
+      if (!_sdf->HasElement("realsense_namespace"))
+      {
+        ROS_INFO_NAMED("realsense", "realsense plugin missing <realsense_namespace>, defaults to \"\"");
+        this->realsense_namespace_ = "";
+      } else {
+        this->realsense_namespace_ = _sdf->Get<std::string>("realsense_namespace");
+        realsense_prefix = this->realsense_namespace_;
+      }
+
+      std::string tf_prefix;
+
+      if(realsense_prefix == ""){
+        tf_prefix = "rs_d435";
+      }else{
+        tf_prefix = realsense_prefix;
+      }
+
+      depth_camera_frame_id_ = cameraNamespace + "/" + tf_prefix + "/" + DEPTH_CAMERA_SUFFIX;
+      color_camera_frame_id_ = cameraNamespace + "/" + tf_prefix + "/" + COLOR_CAMERA_SUFFIX;
+      ired1_camera_frame_id_ = cameraNamespace + "/" + tf_prefix + "/" + IRED1_CAMERA_SUFFIX;
+      ired2_camera_frame_id_ = cameraNamespace + "/" + tf_prefix + "/" + IRED2_CAMERA_SUFFIX;
+      base_frame_id_ = cameraNamespace + "/" + tf_prefix + "/" + BASE_FRAME_SUFFIX;
 
       depth_camera_optical_frame_id_ = depth_camera_frame_id_ + "_optical";
       color_camera_optical_frame_id_ = color_camera_frame_id_ + "_optical";
@@ -611,10 +652,11 @@ namespace gazebo
       } else
         this->yaw_ = _sdf->Get<double>("yaw");
 
-      this->rosnode_ = ros::NodeHandle(cameraNamespace + "/rs_d435");
+      /* this->rosnode_ = ros::NodeHandle(cameraNamespace + "/rs_d435"); */
+      this->rosnode_ = ros::NodeHandle(cameraNamespace + "/" + realsense_prefix + "/rs_d435");
 
       // initialize camera_info_manager
-      this->camera_info_manager_.reset(new camera_info_manager::CameraInfoManager(this->rosnode_, cameraNamespace));
+      this->camera_info_manager_.reset(new camera_info_manager::CameraInfoManager(this->rosnode_, cameraNamespace + "/" + realsense_prefix));
 
       this->itnode_ = std::make_unique<image_transport::ImageTransport>(this->rosnode_);
 
@@ -931,6 +973,7 @@ namespace gazebo
     sensor_msgs::Image image_msg_, depth_msg_;
     int namespace_, frame_id_;
 
+    std::string realsense_namespace_;
     /// \brief frame transform parameters
     std::string parent_frame_name_;
     double x_, y_, z_, roll_, pitch_, yaw_;
