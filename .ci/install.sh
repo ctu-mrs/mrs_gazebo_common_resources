@@ -5,10 +5,10 @@ distro=`lsb_release -r | awk '{ print $2 }'`
 [ "$distro" = "18.04" ] && ROS_DISTRO="melodic"
 [ "$distro" = "20.04" ] && ROS_DISTRO="noetic"
 
-echo "Starting install"
+# get the path to this script
+MY_PATH=`pwd`
 
-# get the current commit SHA
-SHA=`git rev-parse HEAD`
+echo "Starting install"
 
 # get the current package name
 PACKAGE_NAME=${PWD##*/}
@@ -29,18 +29,18 @@ cd simulation
 ./installation/install.sh
 gitman update
 
-# checkout the SHA
-cd ~/simulation/.gitman/$PACKAGE_NAME
-git checkout "$SHA"
+# link the up-to-date version of this package
+rm -rf ~/simulation/.gitman/$PACKAGE_NAME
+ln -s "$MY_PATH" ~/simulation/.gitman/$PACKAGE_NAME
 
 echo "creating workspace"
-mkdir -p ~/catkin_ws/src
-cd ~/catkin_ws/src
+mkdir -p ~/mrs_workspace/src
+cd ~/mrs_workspace/src
 ln -s ~/simulation
 ln -s ~/uav_core/ros_packages/mavros
 ln -s ~/uav_core/ros_packages/mrs_msgs
 source /opt/ros/$ROS_DISTRO/setup.bash
-cd ~/catkin_ws
+cd ~/mrs_workspace
 catkin init
 
 echo "install part ended"
