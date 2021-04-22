@@ -29,6 +29,8 @@ cd simulation
 ./installation/install.sh
 gitman update
 
+sudo apt-get install -y libignition-rendering3
+
 # link the up-to-date version of this package
 rm -rf ~/simulation/.gitman/$PACKAGE_NAME
 ln -s "$MY_PATH" ~/simulation/.gitman/$PACKAGE_NAME
