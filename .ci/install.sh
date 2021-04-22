@@ -13,6 +13,7 @@ echo "Starting install"
 # get the current package name
 PACKAGE_NAME=${PWD##*/}
 
+sudo apt-get update
 sudo apt-get -y install git
 
 echo "installing uav_core"
@@ -29,7 +30,9 @@ cd simulation
 ./installation/install.sh
 gitman update
 
+sudo apt-get update
 sudo apt-get install -y libignition-rendering3
+sudo apt-get -y upgrade
 
 # link the up-to-date version of this package
 rm -rf ~/simulation/.gitman/$PACKAGE_NAME
