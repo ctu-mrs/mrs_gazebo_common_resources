@@ -8,5 +8,5 @@ distro=`lsb_release -r | awk '{ print $2 }'`
 echo "Starting build"
 cd ~/mrs_workspace
 source /opt/ros/$ROS_DISTRO/setup.bash
-catkin build --limit-status-rate 0.2 --summarize
+catkin build mrs_gazebo_common_resources --limit-status-rate 0.2 --summarize
 echo "Ended build"
