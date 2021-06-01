@@ -45,12 +45,20 @@ foreach(ITR ${GAZEBO_INCLUDE_DIRS})
   endif()
 endforeach()
 
+set(GAZEBO_MSG_INCLUDE_DIRS)
+foreach(ITR ${GAZEBO_INCLUDE_DIRS})
+  if(ITR MATCHES ".*gazebo-[0-9.]+$")
+    set(GAZEBO_MSG_INCLUDE_DIRS "${ITR}/gazebo/msgs")
+  endif()
+endforeach()
+
 # PROTOBUF_IMPORT_DIRS has to be set before
 find_package(Protobuf REQUIRED)
 
 set(sensor_msgs
   msgs/SITLGps.proto
   msgs/Groundtruth.proto
+  msgs/MagneticField.proto
   )
 
 PROTOBUF_GENERATE_CPP(SEN_PROTO_SRCS SEN_PROTO_HDRS ${sensor_msgs})
@@ -64,10 +72,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 ###################################
 
 catkin_package(
-   # INCLUDE_DIRS include
+   INCLUDE_DIRS include
    CATKIN_DEPENDS geometry_msgs tf2_msgs gazebo_plugins
    DEPENDS GAZEBO Qt5Widgets Boost Eigen OpenCV
-   LIBRARIES MRSGazeboGuiManager MRSGazeboRvizCameraSynchronizer MRSGazeboStaticTransformRepublisher MRSGazeboRangefinderPlugin MRSGazebo2DLidarPlugin MRSGazebo3DLidarPlugin MRSGazebo3DLidarGpuPlugin MRSGazeboCameraPlugin MRSGazeboRealsensePlugin MRSGazeboParachutePlugin MRSGazeboWaterGunPlugin MRSGazeboGPSPlugin MRSGazeboLightPlugin MRSGazeboServoCameraPlugin MRSGazeboDynamicModelPlugin
+   LIBRARIES MRSGazeboGuiManager MRSGazeboRvizCameraSynchronizer MRSGazeboStaticTransformRepublisher MRSGazeboRangefinderPlugin MRSGazebo2DLidarPlugin MRSGazebo3DLidarPlugin MRSGazebo3DLidarGpuPlugin MRSGazeboCameraPlugin MRSGazeboRealsensePlugin MRSGazeboParachutePlugin MRSGazeboWaterGunPlugin MRSGazeboGPSPlugin MRSGazeboMagnetometerPlugin MRSGazeboLightPlugin MRSGazeboServoCameraPlugin MRSGazeboDynamicModelPlugin
 )
 
 ###########
@@ -79,6 +87,7 @@ catkin_package(
 include_directories(
   include
   ${GAZEBO_INCLUDE_DIRS}
+  ${GAZEBO_MSG_INCLUDE_DIRS}
   ${CMAKE_CURRENT_BINARY_DIR}
   ${catkin_INCLUDE_DIRS}
   ${Qt5Widgets_INCLUDE_DIRS}
@@ -176,6 +185,13 @@ target_link_libraries(MRSGazeboWaterGunPlugin
 
 add_library(MRSGazeboGPSPlugin SHARED src/sensor_and_model_plugins/gps_plugin.cpp ${SEN_PROTO_SRCS})
 target_link_libraries(MRSGazeboGPSPlugin
+  ${GAZEBO_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  )
+
+add_library(MRSGazeboMagnetometerPlugin SHARED src/sensor_and_model_plugins/magnetometer_plugin.cpp src/common/geo_mag_declination.cpp)
+target_link_libraries(MRSGazeboMagnetometerPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
