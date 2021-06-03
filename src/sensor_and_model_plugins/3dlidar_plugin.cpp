@@ -675,11 +675,11 @@ namespace gazebo
       const double MIN_INTENSITY = min_intensity_;
 
       // Populate message fields
-      const uint32_t POINT_STEP = 25;
+      const uint32_t POINT_STEP = 29;
       sensor_msgs::PointCloud2 msg;
       msg.header.frame_id = sensor_frame_name_;
       msg.header.stamp = ros::Time(_msg->time().sec(), _msg->time().nsec());
-      msg.fields.resize(7);
+      msg.fields.resize(9);
       msg.fields[0].name = "x";
       msg.fields[0].offset = 0;
       msg.fields[0].datatype = sensor_msgs::PointField::FLOAT32;
@@ -708,6 +708,14 @@ namespace gazebo
       msg.fields[6].offset = 21;
       msg.fields[6].datatype = sensor_msgs::PointField::UINT32;
       msg.fields[6].count = 1;
+      msg.fields[7].name = "reflectivity";
+      msg.fields[7].offset = 25;
+      msg.fields[7].datatype = sensor_msgs::PointField::UINT16;
+      msg.fields[7].count = 1;
+      msg.fields[8].name = "ambient";
+      msg.fields[8].offset = 27;
+      msg.fields[8].datatype = sensor_msgs::PointField::UINT16;
+      msg.fields[8].count = 1;
       msg.data.resize(verticalRangeCount * rangeCount * POINT_STEP);
 
       uint8_t* ptr = msg.data.data();
@@ -755,6 +763,8 @@ namespace gazebo
 #endif
           *((uint32_t*)(ptr + 17)) = static_cast<uint32_t>(1000.0*range);  // range in mm
           *((uint32_t*)(ptr + 21)) = static_cast<uint32_t>(0);  // time: in sim, the lidar is not rotating and all the points are taken at the same time
+          *((uint32_t*)(ptr + 25)) = static_cast<uint16_t>(0);  // TODO not filled, just a placeholder
+          *((uint32_t*)(ptr + 27)) = static_cast<uint16_t>(0);  // TODO not filled, just a placeholder
           ptr += POINT_STEP;
         }
       }
