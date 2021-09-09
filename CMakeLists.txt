@@ -190,7 +190,7 @@ target_link_libraries(MRSGazeboGPSPlugin
   ${Boost_LIBRARIES}
   )
 
-add_library(MRSGazeboMagnetometerPlugin SHARED src/sensor_and_model_plugins/magnetometer_plugin.cpp src/common/geo_mag_declination.cpp)
+add_library(MRSGazeboMagnetometerPlugin SHARED src/sensor_and_model_plugins/magnetometer_plugin.cpp src/common/geo_mag_declination.cpp ${SEN_PROTO_SRCS})
 target_link_libraries(MRSGazeboMagnetometerPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
