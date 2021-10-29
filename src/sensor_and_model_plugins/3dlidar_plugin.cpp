@@ -443,23 +443,25 @@ namespace gazebo
         else
           pAngle_step = 0;
 
-        coord_coeffs_.reserve(verticalRangeCount * rangeCount);
-        for (int i = 0; i < rangeCount; i++)
+        coord_coeffs_.resize(verticalRangeCount * rangeCount);
+        for (int row = 0; row < verticalRangeCount; row++)
         {
-          for (int j = 0; j < verticalRangeCount; j++)
+          for (int col = 0; col < rangeCount; col++)
           {
             // Get angles of ray to get xyz for point
-            const double yAngle = i * yAngle_step + minAngle.Radian();
-            const double pAngle = j * pAngle_step + verticalMinAngle.Radian();
+            const double yAngle = col * yAngle_step + minAngle.Radian();
+            const double pAngle = row * pAngle_step + verticalMinAngle.Radian();
 
             const double x_coeff = cos(pAngle) * cos(yAngle);
             const double y_coeff = cos(pAngle) * sin(yAngle);
 #if GAZEBO_MAJOR_VERSION > 2
             const double z_coeff = sin(pAngle);
+            /* ROS_ERROR("[%s]: USING VARIANT A: z_coeff = sin(pAngle) (GAZEBO_MAJOR_VERSION = %d)", ros::this_node::getName().c_str(), GAZEBO_MAJOR_VERSION); */
 #else
             const double z_coeff = -sin(pAngle);
+            /* ROS_ERROR("[%s]: USING VARIANT B: z_coeff = -sin(pAngle) (GAZEBO_MAJOR_VERSION = %d)", ros::this_node::getName().c_str(), GAZEBO_MAJOR_VERSION); */
 #endif
-            coord_coeffs_.push_back({x_coeff, y_coeff, z_coeff});
+            coord_coeffs_.at(col + row * rangeCount) = {x_coeff, y_coeff, z_coeff};
           }
         }
       }
@@ -670,9 +672,9 @@ namespace gazebo
       const int verticalRangeCount = parent_ray_sensor_->GetVerticalRangeCount();
 #endif
 
-      const double MIN_RANGE = std::max(min_range_, minRange);
-      const double MAX_RANGE = std::min(max_range_, maxRange);
-      const double MIN_INTENSITY = min_intensity_;
+      const double min_range = std::max(min_range_, minRange);
+      const double max_range = std::min(max_range_, maxRange);
+      const double min_intensity = min_intensity_;
 
       // Populate message fields
       const uint32_t POINT_STEP = 29;
@@ -723,23 +725,26 @@ namespace gazebo
       if (_msg->scan().ranges_size() != rangeCount*verticalRangeCount)
         ROS_ERROR("3D laser plugin: scan has unexpected size (%d, expected %d)", _msg->scan().ranges_size(), rangeCount*verticalRangeCount);
 
-
-    for (int row = 0; row < verticalRangeCount; row++) {
-        for (int col = 0; col < rangeCount; col++) {
-        
+      // DO NOT CHANGE THIS ORDERING! YOU *WILL* BREAK SOMEONE'S SIMULATION!
+      // If you *really* need to change this, ANNOUNCE it to everybody who uses this!
+      for (int row = 0; row < verticalRangeCount; row++)
+      {
+        for (int col = 0; col < rangeCount; col++)
+        {
           // Range
           double range = _msg->scan().ranges(col + row * rangeCount);
 
           // Intensity
-          float intensity = _msg->scan().intensities(col + row * rangeCount);
+          // TODO: investigate why this doesn't work (always returns 0)
+          float intensity = static_cast<float>(_msg->scan().intensities(col + row * rangeCount));
 
           // Noise
           if (apply_gaussian_noise)
             range += gaussianKernel(0, gaussian_noise_);
 
-          // Ignore points that lay outside range bands or optionally, beneath a
+          // Ignore points that lay outside range bands or optionally beneath a
           // minimum intensity level.
-          if ((MIN_RANGE >= range) || (range >= MAX_RANGE) || (intensity < MIN_INTENSITY))
+          if ((range <= min_range) || (range >= max_range) || (intensity < min_intensity))
           {
             if (ordered_) {
               range     = 0.0;
@@ -749,12 +754,12 @@ namespace gazebo
             }
           }
 
-          const auto [x_coeff, y_coeff, z_coeff] = coord_coeffs_.at(col * verticalRangeCount + row);
+          const auto [x_coeff, y_coeff, z_coeff] = coord_coeffs_.at(col + row * rangeCount);
 
           // pAngle is rotated by yAngle:
-          *((float*)(ptr + 0)) = range * x_coeff;
-          *((float*)(ptr + 4)) = range * y_coeff;
-          *((float*)(ptr + 8)) = range * z_coeff;
+          *((float*)(ptr + 0)) = static_cast<float>(range * x_coeff);
+          *((float*)(ptr + 4)) = static_cast<float>(range * y_coeff);
+          *((float*)(ptr + 8)) = static_cast<float>(range * z_coeff);
           *((float*)(ptr + 12)) = intensity;
 #if GAZEBO_MAJOR_VERSION > 2
           *((uint8_t*)(ptr + 16)) = static_cast<uint8_t>(row);  // ring
