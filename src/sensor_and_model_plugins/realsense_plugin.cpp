@@ -580,15 +580,21 @@ namespace gazebo
         this->realsense_namespace_ = "";
       } else {
         this->realsense_namespace_ = _sdf->Get<std::string>("realsense_namespace");
-        realsense_prefix = this->realsense_namespace_;
+        realsense_namespace = this->realsense_namespace_;
       }
 
-      std::string tf_prefix;
+      if (!_sdf->HasElement("camera_suffix"))
+      {
+        ROS_INFO_NAMED("realsense", "realsense plugin missing <camera_suffix>, defaults to \"\"");
+        this->camera_suffix_ = "";
+      } else {
+        this->camera_suffix_ = _sdf->Get<std::string>("camera_suffix");
+      }
 
-      if(realsense_prefix == ""){
-        tf_prefix = "rs_d435";
-      }else{
-        tf_prefix = realsense_prefix;
+      std::string tf_prefix = "rgbd" + this->camera_suffix_;
+
+      if(realsense_namespace != ""){
+        tf_prefix = realsense_namespace + "/" + tf_prefix;
       }
 
       depth_camera_frame_id_ = cameraNamespace + "/" + tf_prefix + "/" + DEPTH_CAMERA_SUFFIX;
@@ -653,10 +659,10 @@ namespace gazebo
         this->yaw_ = _sdf->Get<double>("yaw");
 
       /* this->rosnode_ = ros::NodeHandle(cameraNamespace + "/rs_d435"); */
-      this->rosnode_ = ros::NodeHandle(cameraNamespace + "/" + realsense_prefix + "/rs_d435");
+      this->rosnode_ = ros::NodeHandle(cameraNamespace + "/" + realsense_namespace + "/rgbd" + camera_suffix_);
 
       // initialize camera_info_manager
-      this->camera_info_manager_.reset(new camera_info_manager::CameraInfoManager(this->rosnode_, cameraNamespace + "/" + realsense_prefix));
+      this->camera_info_manager_.reset(new camera_info_manager::CameraInfoManager(this->rosnode_, cameraNamespace + "/" + realsense_namespace + "/rgbd" + camera_suffix_));
 
       this->itnode_ = std::make_unique<image_transport::ImageTransport>(this->rosnode_);
 
@@ -947,7 +953,7 @@ namespace gazebo
 
   private:
     std::string cameraNamespace = "not_linked";
-    std::string realsense_prefix = "rs_d435";
+    std::string realsense_namespace = "rs_d435";
 
   protected:
     boost::shared_ptr<camera_info_manager::CameraInfoManager> camera_info_manager_;
@@ -974,6 +980,7 @@ namespace gazebo
     int namespace_, frame_id_;
 
     std::string realsense_namespace_;
+    std::string camera_suffix_;
     /// \brief frame transform parameters
     std::string parent_frame_name_;
     double x_, y_, z_, roll_, pitch_, yaw_;
