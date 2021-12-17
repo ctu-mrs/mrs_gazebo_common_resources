@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   tf2_msgs
   geometry_msgs
+  std_msgs
   gazebo_plugins
 )
 
@@ -73,7 +74,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 catkin_package(
    INCLUDE_DIRS include
-   CATKIN_DEPENDS geometry_msgs tf2_msgs gazebo_plugins
+   CATKIN_DEPENDS geometry_msgs std_msgs tf2_msgs gazebo_plugins
    DEPENDS GAZEBO Qt5Widgets Boost Eigen OpenCV
    LIBRARIES MRSGazeboGuiManager MRSGazeboRvizCameraSynchronizer MRSGazeboStaticTransformRepublisher MRSGazeboRangefinderPlugin MRSGazebo2DLidarPlugin MRSGazebo3DLidarPlugin MRSGazebo3DLidarGpuPlugin MRSGazeboCameraPlugin MRSGazeboRealsensePlugin MRSGazeboParachutePlugin MRSGazeboWaterGunPlugin MRSGazeboGPSPlugin MRSGazeboMagnetometerPlugin MRSGazeboLightPlugin MRSGazeboServoCameraPlugin MRSGazeboDynamicModelPlugin
 )
@@ -214,6 +215,13 @@ target_link_libraries(MRSGazeboServoCameraPlugin
 
 add_library(MRSGazeboDynamicModelPlugin SHARED src/sensor_and_model_plugins/dynamic_model_plugin.cpp)
 target_link_libraries(MRSGazeboDynamicModelPlugin
+  ${GAZEBO_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  )
+
+add_library(MRSSafetyLedModelPlugin SHARED src/sensor_and_model_plugins/safety_led_plugin.cpp)
+target_link_libraries(MRSSafetyLedModelPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
