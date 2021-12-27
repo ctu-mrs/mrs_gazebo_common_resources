@@ -220,8 +220,8 @@ target_link_libraries(MRSGazeboDynamicModelPlugin
   ${Boost_LIBRARIES}
   )
 
-add_library(MRSSafetyLedModelPlugin SHARED src/sensor_and_model_plugins/safety_led_plugin.cpp)
-target_link_libraries(MRSSafetyLedModelPlugin
+add_library(MRSSafetyLedPlugin SHARED src/sensor_and_model_plugins/safety_led_plugin.cpp)
+target_link_libraries(MRSSafetyLedPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
