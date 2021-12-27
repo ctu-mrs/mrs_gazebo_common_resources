@@ -363,10 +363,10 @@ After building, activate by adding the following to your robot definition.
 ```
 Control the parachute by provided trigger services
 ```
-rosservice call /parent_model_name/parachute/deploy
+rosservice call /<parent_model_name>/parachute/deploy
 ```
 ```
-rosservice call /parent_model_name/parachute/reset
+rosservice call /<parent_model_name>/parachute/reset
 ```
 
 ## Water gun plugin
@@ -392,13 +392,50 @@ After building, activate by adding the following to your robot definition.
 ```
 The water gun can be activated by the following service, which will cause it to spray particles infinetly.
 ```
-rosservice call /parent_model_name/water_gun/start
+rosservice call /<parent_model_name>/water_gun/start
 ```
 To stop the spraying, call the stopping service.
 ```
-rosservice call /parent_model_name/water_gun/start
+rosservice call /<parent_model_name>/water_gun/start
 ```
 If you wish to remove all water particles from the scene, use the following service.
 ```
-rosservice call /parent_model_name/water_gun/cleanup
+rosservice call /<parent_model_name>/water_gun/cleanup
+```
+
+## Safety LED plugin
+
+Inspired by [`gazebo11/plugins`](https://github.com/osrf/gazebo/tree/gazebo11/plugins): [FlashLightPlugin](https://github.com/osrf/gazebo/blob/gazebo11/plugins/FlashLightPlugin.cc) and [LedPlugin](https://github.com/osrf/gazebo/blob/gazebo11/plugins/LedPlugin.cc).
+
+### Description
+- Attaches an RGB LED with a topic-settable color to the model.
+- It subscribes to a heartbeat topic `/<parent_model_name>/safety_led/heartbeat` of type [`std_msgs/ColorRGBA`](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/ColorRGBA.html) and changes the light color to the message value (transparency is supported).
+- Switches back to the default color (red) if heartbeat messages do not arrive within `<failure_duration_threshold>` seconds.
+
+### Usage
+After building, activate by adding the following to your robot definition.
+
+```xml
+  ...
+    <joint name="${name}_joint" type="fixed">
+      <origin xyz="${x} ${y} ${z}" rpy="${roll} ${pitch} ${yaw}" />
+      <parent link="${parent}" />
+      <child link="${name}_link" />
+    </joint>
+    <link name="${name}_link" >
+    </link>
+    <gazebo>
+      <plugin name="safety_led_plugin" filename="libMRSSafetyLedPlugin.so">
+        <model_name>safety_led</model_name>
+        <failure_duration_threshold>${failure_duration_threshold}</failure_duration_threshold>
+        <model_spawn_delay>${model_spawn_delay}</model_spawn_delay>
+        <x>${x}</x>
+        <y>${y}</y>
+        <z>${z}</z>
+        <roll>${roll}</roll>
+        <pitch>${pitch}</pitch>
+        <yaw>${yaw}</yaw>
+      </plugin>
+    </gazebo>
+  ...
 ```
