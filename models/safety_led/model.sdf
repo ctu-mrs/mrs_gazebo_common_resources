@@ -1,0 +1,35 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="safety_led">
+	  <static>1</static>
+	  <link name="safety_led_link">
+      <visual name="safety_led_visual">
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+      </visual>
+      <light type="spot" name="safety_led_light">
+        <pose>0 0 0 -1.57 0 1.57</pose>
+        <diffuse>1 0 0 1</diffuse>
+        <specular>1 0 0 1</specular>
+        <attenuation>
+          <range>0.5</range>
+          <linear>0.05</linear>
+          <constant>0.0</constant>
+          <quadratic>0.0</quadratic>
+        </attenuation>
+        <cast_shadows>false</cast_shadows>
+        <spot>
+          <inner_angle>0.0</inner_angle>
+          <outer_angle>1.0</outer_angle>
+          <falloff>1.0</falloff>
+        </spot>
+      </light>
+    </link>
+  </model>
+</sdf>
+
+

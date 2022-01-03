@@ -21,6 +21,7 @@ This package contains common gazebo files (worlds, models and plugins) for the M
 - [dynamic_pickup](models/dynamic_pickup)
 - [water_particle](models/water_particle)
 - [deployed_parachute](models/deployed_parachute)
+- [safety_led](models/safety_led)
 
 ## Plugins
 - [world_plugins](src/world_plugins) - Detail descriptions in [README](src/world_plugins/README.md)
