@@ -193,7 +193,7 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
 
   // ROS subscriber for control of roll and pitch of camera
   std::stringstream ss;
-  ss << "/" << parent_name << "/servo_camera/set_pitch";
+  ss << "/" << parent_name << "/servo_camera/desired_orientation";
   camera_orientation_sub = nh->subscribe(ss.str().c_str(), 1, &ServoCameraPlugin::desiredOrientationCallback, this);
 
   // ROS services for triggering roll and pitch tilt compensation
