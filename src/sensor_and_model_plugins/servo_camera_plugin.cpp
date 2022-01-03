@@ -1,3 +1,4 @@
+#include <mutex>
 #include <ros/ros.h>
 #include <ros/package.h>
 #include <gazebo/gazebo.hh>
@@ -48,7 +49,6 @@ private:
 
   void updateCameraPosition();
   void OnUpdate();
-  bool spawnCamera();
   void cameraTimerCallback(const ros::TimerEvent &event);
   void moveCamera();
   void convertEulerToQuaternion(double roll_offset, double pitch_offset, double yaw_offset);
@@ -64,11 +64,16 @@ private:
   double                 offset_yaw;
   double                 update_rate;
   double                 max_pitch_rate;
+  double                 min_pitch;
+  double                 max_pitch;
   double                 desired_pitch;
   double                 spawn_delay_sec = 5.0;
   int                    spawn_delay_remaining_loops;
   bool                   camera_spawned;
   bool                   compensate_tilt;
+  std::mutex             mutex_desired_pitch;
+
+  bool initialized = false;
 
   event::ConnectionPtr updateConnection;
 };
@@ -83,77 +88,49 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   offset_pitch = 0.0;
   offset_roll  = 0.0;
 
-  std::stringstream camera_model_path;
+/* Load params //{ */
 
-  if (_sdf->HasElement("camera_type")) {
-    camera_type = _sdf->Get<std::string>("camera_type");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Camera type not defined. Setting default type.", parent_name.c_str());
-    camera_type = "servo_camera";
-  }
-
-  camera_model_path << ros::package::getPath("mrs_gazebo_common_resources") << "/models/" << camera_type << "/model.sdf";
-  ROS_INFO("[%s][Servo camera]: trying to open file %s", parent_name.c_str(), camera_model_path.str().c_str());
-  try {
-    camera_model = sdf::readFile(camera_model_path.str())->ToString();
-    ROS_INFO("[%s][Servo camera]: model loaded successfully", parent_name.c_str());
-  }
-  catch (...) {
-    ROS_FATAL("[%s][Servo camera]: cannot read camera model file!", parent_name.c_str());
-  }
-
-  if (_sdf->HasElement("offset_x")) {
-    offset.Pos().X() = _sdf->Get<double>("offset_x");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Spawn offset_x not defined.", parent_name.c_str());
-  }
-  if (_sdf->HasElement("offset_y")) {
-    offset.Pos().Y() = _sdf->Get<double>("offset_y");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Spawn offset_y not defined.", parent_name.c_str());
-  }
-  if (_sdf->HasElement("offset_z")) {
-    offset.Pos().Z() = _sdf->Get<double>("offset_z");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Spawn offset_z not defined.", parent_name.c_str());
-  }
-  if (_sdf->HasElement("offset_pitch")) {
-    offset_pitch = _sdf->Get<double>("offset_pitch");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Spawn offset_pitch not defined.", parent_name.c_str());
-  }
-  if (_sdf->HasElement("offset_pitch")) {
-    offset_roll = _sdf->Get<double>("offset_roll");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Spawn offset_roll not defined.", parent_name.c_str());
-  }
-  if (_sdf->HasElement("offset_yaw")) {
-    offset_yaw = _sdf->Get<double>("offset_yaw");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Spawn offset_yaw not defined.", parent_name.c_str());
-  }
   if (_sdf->HasElement("max_pitch_rate")) {
     max_pitch_rate = _sdf->Get<double>("max_pitch_rate");
   } else {
-    ROS_WARN("[%s][Servo camera]: Update_rate not defined. Setting to defalt value.", parent_name.c_str());
+    ROS_WARN("[%s][Servo camera]: update_rate not defined. Setting to default value.", parent_name.c_str());
     max_pitch_rate = 10;
   }
+
+  if (_sdf->HasElement("min_pitch")) {
+    min_pitch = _sdf->Get<double>("min_pitch");
+  } else {
+    ROS_WARN("[%s][Servo camera]: min_pitch not defined. Setting to default value.", parent_name.c_str());
+    min_pitch = -1.57;
+  }
+  
+  if (_sdf->HasElement("max_pitch")) {
+    max_pitch = _sdf->Get<double>("max_pitch");
+  } else {
+    ROS_WARN("[%s][Servo camera]: max_pitch not defined. Setting to default value.", parent_name.c_str());
+    max_pitch = 1.57;
+  }
+
   if (_sdf->HasElement("update_rate")) {
     update_rate = _sdf->Get<double>("update_rate");
   } else {
-    ROS_WARN("[%s][Servo camera]: Update_rate not defined. Setting to defalt value.", parent_name.c_str());
+    ROS_WARN("[%s][Servo camera]: Update_rate not defined. Setting to default value.", parent_name.c_str());
     update_rate = 30;
   }
+
   if (_sdf->HasElement("joint_name")) {
     joint_name = _sdf->Get<std::string>("joint_name");
   } else {
     ROS_WARN("[%s][Servo camera]: Joint name not defined.", parent_name.c_str());
   }
+
   if (_sdf->HasElement("compensate_tilt")) {
     compensate_tilt = _sdf->Get<bool>("compensate_tilt");
   } else {
     ROS_WARN("[%s][Servo camera]: Tilt compensation not defined.", parent_name.c_str());
   }
+
+//}
 
   convertEulerToQuaternion(offset_roll, offset_pitch, offset_yaw);
 
@@ -174,12 +151,11 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   ss << "/" << parent_name << "/servo_camera/compensate_tilt";
   tilt_compensation_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationCallback, this);
 
-  spawn_delay_remaining_loops = spawn_delay_sec * update_rate;
-  camera_spawned              = false;
-
   camera_timer = nh->createTimer(ros::Rate(update_rate), &ServoCameraPlugin::cameraTimerCallback, this);
 
   updateConnection = event::Events::ConnectWorldUpdateBegin(std::bind(&ServoCameraPlugin::OnUpdate, this));
+
+  initialized              = true;
 
   ROS_INFO("[%s][Servo camera]: Servo camera initialized.", parent_name.c_str());
 }
@@ -191,91 +167,66 @@ void ServoCameraPlugin::convertEulerToQuaternion(double roll_offset, double pitc
 }
 //}
 
-/* spawnCamera() */  //{
-bool ServoCameraPlugin::spawnCamera() {
-  std::stringstream       ss;
-  gazebo_msgs::SpawnModel spawn_call;
-  spawn_call.request.reference_frame = parent_name;
-  spawn_call.request.model_xml       = camera_model;
-  ss.str(std::string());
-  ss << parent_name << "_camera_panel";
-  spawn_call.request.model_name = ss.str().c_str();
-  spawn_srv.call(spawn_call);
-  if (spawn_call.response.success) {
-    ROS_INFO("[%s][servo_camera]: Camera spawned.", parent_name.c_str());
-    camera_spawned = true;
-  } else {
-    ROS_WARN("[%s]: Spawn not succesfull, msg: %s", ros::this_node::getName().c_str(), spawn_call.response.status_message.c_str());
-  }
-  return spawn_call.response.success;
-}
-//}
-
 /* cameraTimerCallback */  //{
 void ServoCameraPlugin::cameraTimerCallback(const ros::TimerEvent &event) {
-  if (!camera_spawned) {
-    if (spawn_delay_remaining_loops < 0) {
-      spawnCamera();
-    } else {
-      spawn_delay_remaining_loops--;
-    }
+
+  if (!initialized) { 
+    return;
   }
-  if (camera_spawned) {
-    moveCamera();
-  }
+
+  moveCamera();
 }
 //}
 
 /* pitchCallback */  //{
 void ServoCameraPlugin::pitchCallback(const std_msgs::Float32 &msg) {
-  /* ROS_INFO("[%s][Servo camera]: Change camera pitch!", parent_name.c_str()); */
-  desired_pitch = fmod(msg.data + 2 * M_PI, 2 * M_PI);
+
+  std::scoped_lock lock(mutex_desired_pitch);
+  desired_pitch = fmin(fmax(min_pitch, msg.data), max_pitch); // clip value in limits
+  desired_pitch = fmod(desired_pitch + 2 * M_PI, 2 * M_PI);
+  ROS_INFO("[%s][Servo camera]: Change camera pitch to %.2f! Requested unlimited pitch = %.2f", parent_name.c_str(), desired_pitch, msg.data);
+
 }
 //}
 
 /* triggerTiltCompensationCallback() */  //{
 bool ServoCameraPlugin::triggerTiltCompensationCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
+
   ROS_INFO("[%s][Servo camera]: Trigger tilt compensation!", parent_name.c_str());
 
   compensate_tilt = req.data;
-  res.message = compensate_tilt ? "tilt compensation enabled" : "tilt compensation disabled";
-  ROS_WARN("[%s][Servo Camera]: %s.", parent_name.c_str(), res.message.c_str());
+  res.message     = compensate_tilt ? "tilt compensation enabled" : "tilt compensation disabled";
+  ROS_WARN("[%s][Servo Camera]: Tilt compensation is not enabled in current implementation.", parent_name.c_str());
 
   res.success = true;
   return res.success;
+
 }
 //}
 
 /* moveCamera() //{ */
 void ServoCameraPlugin::moveCamera() {
-  std::stringstream ss;
-  ss << parent_name << "_camera_panel";
-  gazebo_msgs::SetModelState srv;
-  srv.request.model_state.twist.linear.x     = 0.0;
-  srv.request.model_state.twist.linear.y     = 0.0;
-  srv.request.model_state.twist.linear.z     = 0.0;
-  srv.request.model_state.model_name         = ss.str().c_str();
-  srv.request.model_state.pose.position.x    = spawn_point.Pos().X();
-  srv.request.model_state.pose.position.y    = spawn_point.Pos().Y();
-  srv.request.model_state.pose.position.z    = spawn_point.Pos().Z();
-  srv.request.model_state.pose.orientation.x = spawn_point.Rot().X();
-  srv.request.model_state.pose.orientation.y = spawn_point.Rot().Y();
-  srv.request.model_state.pose.orientation.z = spawn_point.Rot().Z();
-  srv.request.model_state.pose.orientation.w = spawn_point.Rot().W();
 
-  double abs_diff = abs(offset_pitch - desired_pitch);
-  double min_diff = abs_diff > M_PI ? 2 * M_PI - abs_diff : abs_diff;
+  {
+    std::scoped_lock lock(mutex_desired_pitch);
 
-  if (min_diff > 1e-5) {
-    double dir = desired_pitch > offset_pitch ? 1.0 : -1.0;
-    dir        = abs(min_diff - abs_diff) > 1e-5 ? -1.0 * dir : dir;
-    offset_pitch += dir * fmin(abs(desired_pitch - offset_pitch), max_pitch_rate / update_rate);
-    convertEulerToQuaternion(offset_roll, offset_pitch, offset_yaw);
-    offset_pitch = fmod(offset_pitch + 2 * M_PI, 2 * M_PI);
+    double           abs_diff = abs(offset_pitch - desired_pitch);
+    double           min_diff = abs_diff > M_PI ? 2 * M_PI - abs_diff : abs_diff;
+
+    if (min_diff > 1e-5) {
+      double dir = desired_pitch > offset_pitch ? 1.0 : -1.0;
+      dir        = abs(min_diff - abs_diff) > 1e-5 ? -1.0 * dir : dir;
+      offset_pitch += dir * fmin(abs(desired_pitch - offset_pitch), max_pitch_rate / update_rate);
+      convertEulerToQuaternion(offset_roll, offset_pitch, offset_yaw);
+      offset_pitch = fmod(offset_pitch + 2 * M_PI, 2 * M_PI);
+    }
+
   }
 
   if (model->GetLink("base_link") != NULL) {
+
     if (model->GetLink("base_link")->GetChildJoints().size() != 0) {
+
       int index = -1;
       for (size_t i = 0; i < model->GetLink("base_link")->GetChildJoints().size(); i++) {
         if (model->GetLink("base_link")->GetChildJoints()[i]->GetName() == joint_name) {
@@ -283,44 +234,46 @@ void ServoCameraPlugin::moveCamera() {
           break;
         }
       }
+
       if (index != -1) {
-        model->GetLink("base_link")->GetChildJoints()[index]->SetPosition(0, offset_pitch);
+        double applied_pitch_offset = offset_pitch > M_PI ? -2*M_PI + offset_pitch : offset_pitch;
+        model->GetLink("base_link")->GetChildJoints()[index]->SetPosition(0, applied_pitch_offset);
+        ROS_INFO_THROTTLE(5.0, "[%s]: Setting position of joint %s to %.2f.", ros::this_node::getName().c_str(), model->GetLink("base_link")->GetChildJoints()[index]->GetName().c_str(), applied_pitch_offset);
       } else {
         ROS_WARN_THROTTLE(1.0, "[%s]: Servo camera macro joint doesn't found.", ros::this_node::getName().c_str());
       }
+
     } else {
       ROS_WARN_THROTTLE(1.0, "[%s]: Base link has no child joints", ros::this_node::getName().c_str());
     }
+
   } else {
     ROS_WARN_THROTTLE(1.0, "[%s]: Model has no base link", ros::this_node::getName().c_str());
   }
 
-  change_state_srv.call(srv);
-  if (!srv.response.success) {
-    ROS_WARN("[%s]: Unsuccessful model state change.", ros::this_node::getName().c_str());
-  }
 }
 //}
 
 /* updateCameraPosition() //{ */
-void ServoCameraPlugin::updateCameraPosition() {
-  ignition::math::Pose3d model_pose = model->WorldPose();
+/* void ServoCameraPlugin::updateCameraPosition() { */
+/*   ignition::math::Pose3d model_pose = model->WorldPose(); */
 
-  if (compensate_tilt) { // simulates perfect stabilization of pitch and roll angles
-    ignition::math::Vector3d dir = ignition::math::Vector3d(1.0, 0.0, 0.0);
-    dir                          = model->WorldPose().Rot() * dir;
-    double heading               = atan2(dir.Y(), dir.X());
-    model_pose.Rot()             = ignition::math::Quaternion<double>(0.0, 0.0, heading);
-  }
+/*   if (compensate_tilt) {  // simulates perfect stabilization of pitch and roll angles */
+/*     ignition::math::Vector3d dir = ignition::math::Vector3d(1.0, 0.0, 0.0); */
+/*     dir                          = model->WorldPose().Rot() * dir; */
+/*     double heading               = atan2(dir.Y(), dir.X()); */
+/*     model_pose.Rot()             = ignition::math::Quaternion<double>(0.0, 0.0, heading); */
+/*   } */
 
-  spawn_point.Rot() = model_pose.Rot() * offset.Rot();
-  spawn_point.Pos() = model_pose.Pos() + model_pose.Rot() * offset.Pos();
-}
+/*   spawn_point.Rot() = model_pose.Rot() * offset.Rot(); */
+/*   spawn_point.Pos() = model_pose.Pos() + model_pose.Rot() * offset.Pos(); */
+/*   ROS_INFO_THROTTLE(5.0, "[%s]: Updating camera position.", ros::this_node::getName().c_str()); */
+/* } */
 //}
 
 /* OnUpdate //{ */
 void ServoCameraPlugin::OnUpdate() {
-  updateCameraPosition();
+  /* updateCameraPosition(); */
 }
 //}
 
