@@ -39,46 +39,51 @@ public:
 private:
   physics::ModelPtr  model;
   ros::NodeHandle *  nh;
-  ros::ServiceServer tilt_compensation_srv;
-  ros::ServiceClient spawn_srv, change_state_srv;
+  ros::ServiceServer tilt_compensation_pitch_srv;
+  ros::ServiceServer tilt_compensation_roll_srv;
   ros::Subscriber    camera_orientation_sub;
   ros::Timer         camera_timer;
 
   void desiredOrientationCallback(const std_msgs::Float32MultiArray &desired_orientation);
-  bool triggerTiltCompensationCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
+  bool triggerTiltCompensationPitchCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
+  bool triggerTiltCompensationRollCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
 
-  void updateCameraPosition();
+  void updateModelOrientation();
   void OnUpdate();
   void cameraTimerCallback(const ros::TimerEvent &event);
   void moveCamera();
-  void convertEulerToQuaternion(double roll_offset, double pitch_offset, double yaw_offset);
 
-  std::string            camera_model;
+  // camera and gimbal link and joint names
   std::string            parent_name;
-  ignition::math::Pose3d offset;
-  ignition::math::Pose3d spawn_point;
   std::string            joint_name_pitch;
   std::string            joint_name_roll;
   std::string            parent_link_pitch;
   std::string            parent_link_roll;
-  double                 offset_roll;
-  double                 offset_pitch;
-  double                 offset_yaw;
-  double                 update_rate;
-  double                 max_pitch_rate;
+
+  // camera offset with respect to model
+  double                 offset_roll = 0.0;
+  double                 offset_pitch = 0.0;
+
+  double                 update_rate; // update rate of camera position
+
+  double                 desired_pitch;
   double                 min_pitch;
   double                 max_pitch;
-  double                 desired_pitch;
-  double                 max_roll_rate;
+  double                 max_pitch_rate;
+  bool                   compensate_tilt_pitch;
+
+  double                 desired_roll;
   double                 min_roll;
   double                 max_roll;
-  double                 desired_roll;
-  double                 spawn_delay_sec = 5.0;
-  int                    spawn_delay_remaining_loops;
-  bool                   camera_spawned;
+  double                 max_roll_rate;
   bool                   compensate_tilt_roll;
-  bool                   compensate_tilt_pitch;
+
   std::mutex             mutex_desired_orientation;
+
+  // model orientation in world frame
+  std::mutex             mutex_model_orientation;
+  double model_roll;
+  double model_pitch;
 
   bool initialized = false;
 
@@ -91,9 +96,6 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   ROS_INFO("[%s]: Servo camera plugin started.", ros::this_node::getName().c_str());
   model        = _parent;
   parent_name  = model->GetName().c_str();
-  offset_yaw   = 0.0;
-  offset_pitch = 0.0;
-  offset_roll  = 0.0;
 
 /* Load params //{ */
 
@@ -183,24 +185,25 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   }
 //}
 
-  convertEulerToQuaternion(offset_roll, offset_pitch, offset_yaw);
-
   // initialize ROS
   int    argc = 0;
   char **argv = NULL;
   ros::init(argc, argv, "servo_camera_plugin", ros::init_options::NoSigintHandler);
   nh = new ros::NodeHandle("~");
 
-  change_state_srv = nh->serviceClient<gazebo_msgs::SetModelState>("/gazebo/set_model_state");
-  spawn_srv        = nh->serviceClient<gazebo_msgs::SpawnModel>("/gazebo/spawn_sdf_model");
-
-  // create ROS services to control the light
+  // ROS subscriber for control of roll and pitch of camera
   std::stringstream ss;
   ss << "/" << parent_name << "/servo_camera/set_pitch";
   camera_orientation_sub = nh->subscribe(ss.str().c_str(), 1, &ServoCameraPlugin::desiredOrientationCallback, this);
+
+  // ROS services for triggering roll and pitch tilt compensation
   ss.str(std::string());
-  ss << "/" << parent_name << "/servo_camera/compensate_tilt";
-  tilt_compensation_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationCallback, this);
+  ss << "/" << parent_name << "/servo_camera/compensate_tilt_pitch";
+  tilt_compensation_pitch_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationPitchCallback, this);
+
+  ss.str(std::string());
+  ss << "/" << parent_name << "/servo_camera/compensate_tilt_roll";
+  tilt_compensation_roll_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationPitchCallback, this);
 
   camera_timer = nh->createTimer(ros::Rate(update_rate), &ServoCameraPlugin::cameraTimerCallback, this);
 
@@ -209,12 +212,6 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   initialized              = true;
 
   ROS_INFO("[%s][Servo camera]: Servo camera initialized.", parent_name.c_str());
-}
-//}
-
-/* convertEulerToQuaternion() //{ */
-void ServoCameraPlugin::convertEulerToQuaternion(double roll_offset, double pitch_offset, double yaw_offset) {
-  offset.Rot() = ignition::math::Quaternion<double>(roll_offset, pitch_offset, yaw_offset);
 }
 //}
 
@@ -249,14 +246,29 @@ void ServoCameraPlugin::desiredOrientationCallback(const std_msgs::Float32MultiA
 }
 //}
 
-/* triggerTiltCompensationCallback() */  //{
-bool ServoCameraPlugin::triggerTiltCompensationCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
+/* triggerTiltCompensationPitchCallback() */  //{
+bool ServoCameraPlugin::triggerTiltCompensationPitchCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
 
-  ROS_INFO("[%s][Servo camera]: Trigger tilt compensation!", parent_name.c_str());
+  ROS_INFO("[%s][Servo camera]: Trigger tilt compensation pitch!", parent_name.c_str());
 
   compensate_tilt_pitch = req.data;
   res.message     = compensate_tilt_pitch ? "tilt compensation enabled" : "tilt compensation disabled";
-  ROS_WARN("[%s][Servo Camera]: Tilt compensation is not enabled in current implementation.", parent_name.c_str());
+  ROS_WARN("[%s][Servo Camera]: %s.", parent_name.c_str(), res.message.c_str());
+
+  res.success = true;
+  return res.success;
+
+}
+//}
+
+/* triggerTiltCompensationRollCallback() */  //{
+bool ServoCameraPlugin::triggerTiltCompensationRollCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
+
+  ROS_INFO("[%s][Servo camera]: Trigger tilt compensation roll!", parent_name.c_str());
+
+  compensate_tilt_roll = req.data;
+  res.message     = compensate_tilt_roll ? "tilt compensation enabled" : "tilt compensation disabled";
+  ROS_WARN("[%s][Servo Camera]: %s.", parent_name.c_str(), res.message.c_str());
 
   res.success = true;
   return res.success;
@@ -268,31 +280,36 @@ bool ServoCameraPlugin::triggerTiltCompensationCallback(std_srvs::SetBoolRequest
 void ServoCameraPlugin::moveCamera() {
 
   {
-    std::scoped_lock lock(mutex_desired_orientation);
+    std::scoped_lock lock(mutex_desired_orientation, mutex_model_orientation);
 
-    double           abs_diff_pitch = abs(offset_pitch - desired_pitch);
+    // get desired pitch and roll angles compensated for current tilts of model
+    double compensated_pitch = compensate_tilt_pitch ? desired_pitch - model_pitch : desired_pitch;  
+    double compensated_roll = compensate_tilt_roll ? desired_roll - model_roll : desired_roll;  
+
+    // find required angle in next step that satisfies limits on angular_rates 
+    double           abs_diff_pitch = abs(offset_pitch - compensated_pitch);
     double           min_diff_pitch = abs_diff_pitch > M_PI ? 2 * M_PI - abs_diff_pitch : abs_diff_pitch;
 
-    if (min_diff_pitch > 1e-5) {
-      double dir = desired_pitch > offset_pitch ? 1.0 : -1.0;
-      dir        = abs(min_diff_pitch - abs_diff_pitch) > 1e-5 ? -1.0 * dir : dir;
-      offset_pitch += dir * fmin(abs(desired_pitch - offset_pitch), max_pitch_rate / update_rate);
-      convertEulerToQuaternion(offset_roll, offset_pitch, offset_yaw);
+    if (min_diff_pitch > 1e-2) {
+      double dir = compensated_pitch > offset_pitch ? 1.0 : -1.0;
+      dir        = abs(min_diff_pitch - abs_diff_pitch) > 1e-2 ? -1.0 * dir : dir;
+      offset_pitch += dir * fmin(abs(compensated_pitch - offset_pitch), max_pitch_rate / update_rate);
       offset_pitch = fmod(offset_pitch + 2 * M_PI, 2 * M_PI);
     }
 
-    double           abs_diff_roll = abs(offset_roll - desired_roll);
+    double           abs_diff_roll = abs(offset_roll - compensated_roll);
     double           min_diff_roll = abs_diff_roll > M_PI ? 2 * M_PI - abs_diff_roll : abs_diff_roll;
 
-    if (min_diff_roll > 1e-5) {
-      double dir = desired_roll > offset_roll ? 1.0 : -1.0;
-      dir        = abs(min_diff_roll - abs_diff_roll) > 1e-5 ? -1.0 * dir : dir;
-      offset_roll += dir * fmin(abs(desired_roll - offset_roll), max_roll_rate / update_rate);
+    if (min_diff_roll > 1e-2) {
+      double dir = compensated_roll > offset_roll ? 1.0 : -1.0;
+      dir        = abs(min_diff_roll - abs_diff_roll) > 1e-2 ? -1.0 * dir : dir;
+      offset_roll += dir * fmin(abs(compensated_roll - offset_roll), max_roll_rate / update_rate);
       offset_roll = fmod(offset_roll + 2 * M_PI, 2 * M_PI);
     }
 
   }
 
+  // set joint coordinates based on computed required orientations of links
   if (model->GetLink(parent_link_roll) != NULL) {
 
     if (model->GetLink(parent_link_roll)->GetChildJoints().size() != 0) {
@@ -348,29 +365,26 @@ void ServoCameraPlugin::moveCamera() {
   } else {
     ROS_WARN_THROTTLE(1.0, "[%s]: Model has no link %s", ros::this_node::getName().c_str(), parent_link_pitch.c_str());
   }
+
 }
 //}
 
 /* updateCameraPosition() //{ */
-/* void ServoCameraPlugin::updateCameraPosition() { */
-/*   ignition::math::Pose3d model_pose = model->WorldPose(); */
+void ServoCameraPlugin::updateModelOrientation() {
+ 
+  // get tilts of model
+  std::scoped_lock lock(mutex_model_orientation);
+  ignition::math::Pose3d model_pose = model->WorldPose();
+  model_roll = model_pose.Rot().Roll();
+  model_pitch = model_pose.Rot().Pitch();
+  ROS_INFO_THROTTLE(5.0, "[%s]: Updating model orientation.", ros::this_node::getName().c_str());
 
-/*   if (compensate_tilt) {  // simulates perfect stabilization of pitch and roll angles */
-/*     ignition::math::Vector3d dir = ignition::math::Vector3d(1.0, 0.0, 0.0); */
-/*     dir                          = model->WorldPose().Rot() * dir; */
-/*     double heading               = atan2(dir.Y(), dir.X()); */
-/*     model_pose.Rot()             = ignition::math::Quaternion<double>(0.0, 0.0, heading); */
-/*   } */
-
-/*   spawn_point.Rot() = model_pose.Rot() * offset.Rot(); */
-/*   spawn_point.Pos() = model_pose.Pos() + model_pose.Rot() * offset.Pos(); */
-/*   ROS_INFO_THROTTLE(5.0, "[%s]: Updating camera position.", ros::this_node::getName().c_str()); */
-/* } */
+}
 //}
 
 /* OnUpdate //{ */
 void ServoCameraPlugin::OnUpdate() {
-  /* updateCameraPosition(); */
+  updateModelOrientation();
 }
 //}
 
