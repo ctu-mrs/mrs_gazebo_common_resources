@@ -127,7 +127,7 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
     max_pitch = 1.57;
   }
 
-  if (_sdf->HasElement("min_pitch")) {
+  if (_sdf->HasElement("min_roll")) {
     min_roll = _sdf->Get<double>("min_roll");
   } else {
     ROS_WARN("[%s][Servo camera]: min_roll not defined. Setting to default value.", parent_name.c_str());
