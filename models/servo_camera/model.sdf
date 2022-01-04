@@ -37,14 +37,14 @@
           <distortionK3>0.0</distortionK3>
           <distortionT1>0.0</distortionT1>
           <distortionT2>0.0</distortionT2>
+          <x>0.0</x>
+          <y>0.0</y>
+          <z>0.0</z>
+          <roll>0.0</roll>
+          <pitch>0.0</pitch>
+          <yaw>0.0</yaw>
           <parentFrameName>fcu_uav</parentFrameName>
           <sensorBaseFrameName>servo_camera_sensor_frame</sensorBaseFrameName>
-          <x>${x}</x>
-          <y>${y}</y>
-          <z>${z}</z>
-          <roll>${roll}</roll>
-          <pitch>${pitch}</pitch>
-          <yaw>${yaw}</yaw>
         </plugin>
       </sensor>
     </link>

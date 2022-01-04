@@ -180,62 +180,52 @@ After building, activate by adding the following to your robot definition.
 ## Servo camera plugin
 
 ### Description
-- Simulates camera with adjustable pitch angle
+- Simulates camera with adjustable pitch and roll angle. The plugin enables to control 2 revolute joints simulating 2-axis gimbal. The plugin requests references to existing links and joints that should be controlled.
 
 ### Usage
 After building, activate by adding the following to your robot definition.
 
 ```xml
   ...
-    <joint name="${name}_joint" type="revolute">
-        <parent link="${parent}"/>
-        <child link="${name}_link"/>
-        <axis xyz="0 1 0"/>
-        <dynamics damping="0.05" friction="0.05"/>
-        <limit upper="1.57" lower="-1.57" effort="1" velocity="10" />
-        <origin xyz="${offset_x} ${offset_y} ${offset_z}" rpy="0.0 0.0 0.0"/>
-    </joint>
-    <link name="${name}_link">
-        <inertial>
-            <mass value="1e-3" />
-            <inertia ixx="1e-5" ixy="0.0" ixz="0.0" iyy="1e-5" iyz="0.0" izz="1e-5"/>
-        </inertial>
-      <visual>
-        <geometry>
-          <box size="0.01 0.01 0.01" />
-        </geometry>
-      </visual>
-    </link>
     <gazebo>
       <plugin name="servo_camera_plugin" filename="libMRSGazeboServoCameraPlugin.so">
-        <offset_x>${offset_x}</offset_x>
-        <offset_y>${offset_y}</offset_y>
-        <offset_z>${offset_z}</offset_z>
-        <offset_pitch>${offset_pitch}</offset_pitch>
-        <offset_yaw>${offset_yaw}</offset_yaw>
-        <offset_roll>${offset_roll}</offset_roll>
-        <spawning_frame>${parent}</spawning_frame>
-        <update_rate>${update_rate}</update_rate>
+        <tilt_update_rate>${tilt_update_rate}</tilt_update_rate>
         <max_pitch_rate>${max_pitch_rate}</max_pitch_rate>
-        <joint_name>${name}_joint</joint_name>
-        <camera_type>${camera_type}</camera_type>
-        <compensate_tilt>${compensate_tilt}</compensate_tilt>
+        <max_pitch>${max_pitch}</max_pitch>
+        <min_pitch>${min_pitch}</min_pitch>
+        <max_roll_rate>${max_roll_rate}</max_roll_rate>
+        <max_roll>${max_roll}</max_roll>
+        <min_roll>${min_roll}</min_roll>
+        <joint_name_pitch>${namespace}_servo_camera_joint_pitch</joint_name_pitch>
+        <joint_name_roll>${namespace}_servo_camera_joint_roll</joint_name_roll>
+        <parent_link_pitch>${namespace}_servo_camera_gimbal_link</parent_link_pitch>
+        <parent_link_roll>${parent}</parent_link_roll>
+        <compensate_tilt_roll>${compensate_tilt_roll}</compensate_tilt_roll>
+        <compensate_tilt_pitch>${compensate_tilt_pitch}</compensate_tilt_pitch>
       </plugin>
     </gazebo>
   ...
 ```
+Complete example of usage including creating links and joints can be found in [MRS robots description file](https://github.com/ctu-mrs/mrs_simulation/blob/master/models/mrs_robots_description/urdf/component_snippets.xacro).
 
-The angle can be set by publishing desired camera angle on topic /uav_name/servo_camera/set_pitch, e.g. 
+The angle can be set by publishing desired camera angle on topic /uav_name/servo_camera/set_orientation of type std_msgs/Float32MultiArray, where first element of array is required roll angle and second element is required pitch angle, e.g.
 ```
-rostopic pub /uav1/servo_camera/set_pitch std_msgs/Float32 "data: 1.0"
+rostopic pub /uav_name/servo_camera/desired_orientation std_msgs/Float32MultiArray 
+"layout:
+   dim:
+     label: ''
+     size: 2
+     stride: 0
+   data_offset: 0
+ data: [0.0, 0.5]"
 ```
 
-The tilt compensation simulating perfect camera stabilization can be activated and deactivated by calling service /uav_name/servo_camera/compensate_tilt, e.g. 
+The per axis tilt compensation simulating camera stabilization can be activated and deactivated by calling service /uav_name/servo_camera/compensate_tilt_roll or /uav_name/servo_camera/compensate_tilt_pitch, e.g. 
 ```
-rosservice call /uav1/servo_camera/compensate_tilt "data: true"
+rosservice call /uav1/servo_camera/compensate_tilt_roll "data: true"
 ```
 
-The camera image is published on topic /servo_camera/image_raw.
+The camera image is published on topic /uav_name/servo_camera/image_raw.
 
 ## Light plugin
 

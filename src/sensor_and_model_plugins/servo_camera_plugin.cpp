@@ -1,3 +1,4 @@
+#include <mutex>
 #include <ros/ros.h>
 #include <ros/package.h>
 #include <gazebo/gazebo.hh>
@@ -18,7 +19,7 @@
 
 #include <std_srvs/Trigger.h>
 #include <std_srvs/SetBool.h>
-#include <std_msgs/Float32.h>
+#include <std_msgs/Float32MultiArray.h>
 #include <gazebo_msgs/SpawnModel.h>
 #include <gazebo_msgs/DeleteModel.h>
 #include <gazebo_msgs/SetModelState.h>
@@ -38,37 +39,53 @@ public:
 private:
   physics::ModelPtr  model;
   ros::NodeHandle *  nh;
-  ros::ServiceServer tilt_compensation_srv;
-  ros::ServiceClient spawn_srv, change_state_srv;
-  ros::Subscriber    pitch_sub;
+  ros::ServiceServer tilt_compensation_pitch_srv;
+  ros::ServiceServer tilt_compensation_roll_srv;
+  ros::Subscriber    camera_orientation_sub;
   ros::Timer         camera_timer;
 
-  void pitchCallback(const std_msgs::Float32 &desired_pitch);
-  bool triggerTiltCompensationCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
+  void desiredOrientationCallback(const std_msgs::Float32MultiArray &desired_orientation);
+  bool triggerTiltCompensationPitchCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
+  bool triggerTiltCompensationRollCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
 
-  void updateCameraPosition();
+  void updateModelOrientation();
   void OnUpdate();
-  bool spawnCamera();
   void cameraTimerCallback(const ros::TimerEvent &event);
   void moveCamera();
-  void convertEulerToQuaternion(double roll_offset, double pitch_offset, double yaw_offset);
 
-  std::string            camera_model;
+  // camera and gimbal link and joint names
   std::string            parent_name;
-  ignition::math::Pose3d offset;
-  ignition::math::Pose3d spawn_point;
-  std::string            joint_name;
-  std::string            camera_type;
-  double                 offset_roll;
-  double                 offset_pitch;
-  double                 offset_yaw;
-  double                 update_rate;
-  double                 max_pitch_rate;
+  std::string            joint_name_pitch;
+  std::string            joint_name_roll;
+  std::string            parent_link_pitch;
+  std::string            parent_link_roll;
+
+  // camera offset with respect to model
+  double                 offset_roll = 0.0;
+  double                 offset_pitch = 0.0;
+
+  double                 update_rate; // update rate of camera position
+
   double                 desired_pitch;
-  double                 spawn_delay_sec = 5.0;
-  int                    spawn_delay_remaining_loops;
-  bool                   camera_spawned;
-  bool                   compensate_tilt;
+  double                 min_pitch;
+  double                 max_pitch;
+  double                 max_pitch_rate;
+  bool                   compensate_tilt_pitch;
+
+  double                 desired_roll;
+  double                 min_roll;
+  double                 max_roll;
+  double                 max_roll_rate;
+  bool                   compensate_tilt_roll;
+
+  std::mutex             mutex_desired_orientation;
+
+  // model orientation in world frame
+  std::mutex             mutex_model_orientation;
+  double model_roll;
+  double model_pitch;
+
+  bool initialized = false;
 
   event::ConnectionPtr updateConnection;
 };
@@ -79,83 +96,94 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   ROS_INFO("[%s]: Servo camera plugin started.", ros::this_node::getName().c_str());
   model        = _parent;
   parent_name  = model->GetName().c_str();
-  offset_yaw   = 0.0;
-  offset_pitch = 0.0;
-  offset_roll  = 0.0;
 
-  std::stringstream camera_model_path;
+/* Load params //{ */
 
-  if (_sdf->HasElement("camera_type")) {
-    camera_type = _sdf->Get<std::string>("camera_type");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Camera type not defined. Setting default type.", parent_name.c_str());
-    camera_type = "servo_camera";
-  }
-
-  camera_model_path << ros::package::getPath("mrs_gazebo_common_resources") << "/models/" << camera_type << "/model.sdf";
-  ROS_INFO("[%s][Servo camera]: trying to open file %s", parent_name.c_str(), camera_model_path.str().c_str());
-  try {
-    camera_model = sdf::readFile(camera_model_path.str())->ToString();
-    ROS_INFO("[%s][Servo camera]: model loaded successfully", parent_name.c_str());
-  }
-  catch (...) {
-    ROS_FATAL("[%s][Servo camera]: cannot read camera model file!", parent_name.c_str());
-  }
-
-  if (_sdf->HasElement("offset_x")) {
-    offset.Pos().X() = _sdf->Get<double>("offset_x");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Spawn offset_x not defined.", parent_name.c_str());
-  }
-  if (_sdf->HasElement("offset_y")) {
-    offset.Pos().Y() = _sdf->Get<double>("offset_y");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Spawn offset_y not defined.", parent_name.c_str());
-  }
-  if (_sdf->HasElement("offset_z")) {
-    offset.Pos().Z() = _sdf->Get<double>("offset_z");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Spawn offset_z not defined.", parent_name.c_str());
-  }
-  if (_sdf->HasElement("offset_pitch")) {
-    offset_pitch = _sdf->Get<double>("offset_pitch");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Spawn offset_pitch not defined.", parent_name.c_str());
-  }
-  if (_sdf->HasElement("offset_pitch")) {
-    offset_roll = _sdf->Get<double>("offset_roll");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Spawn offset_roll not defined.", parent_name.c_str());
-  }
-  if (_sdf->HasElement("offset_yaw")) {
-    offset_yaw = _sdf->Get<double>("offset_yaw");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Spawn offset_yaw not defined.", parent_name.c_str());
-  }
   if (_sdf->HasElement("max_pitch_rate")) {
     max_pitch_rate = _sdf->Get<double>("max_pitch_rate");
   } else {
-    ROS_WARN("[%s][Servo camera]: Update_rate not defined. Setting to defalt value.", parent_name.c_str());
+    ROS_WARN("[%s][Servo camera]: Max pitch rate not defined. Setting to default value.", parent_name.c_str());
     max_pitch_rate = 10;
   }
-  if (_sdf->HasElement("update_rate")) {
-    update_rate = _sdf->Get<double>("update_rate");
+
+  if (_sdf->HasElement("max_roll_rate")) {
+    max_roll_rate = _sdf->Get<double>("max_roll_rate");
   } else {
-    ROS_WARN("[%s][Servo camera]: Update_rate not defined. Setting to defalt value.", parent_name.c_str());
-    update_rate = 30;
-  }
-  if (_sdf->HasElement("joint_name")) {
-    joint_name = _sdf->Get<std::string>("joint_name");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Joint name not defined.", parent_name.c_str());
-  }
-  if (_sdf->HasElement("compensate_tilt")) {
-    compensate_tilt = _sdf->Get<bool>("compensate_tilt");
-  } else {
-    ROS_WARN("[%s][Servo camera]: Tilt compensation not defined.", parent_name.c_str());
+    ROS_WARN("[%s][Servo camera]: Max roll rate not defined. Setting to default value.", parent_name.c_str());
+    max_roll_rate = 10;
   }
 
-  convertEulerToQuaternion(offset_roll, offset_pitch, offset_yaw);
+  if (_sdf->HasElement("min_pitch")) {
+    min_pitch = _sdf->Get<double>("min_pitch");
+  } else {
+    ROS_WARN("[%s][Servo camera]: min_pitch not defined. Setting to default value.", parent_name.c_str());
+    min_pitch = -1.57;
+  }
+  
+  if (_sdf->HasElement("max_pitch")) {
+    max_pitch = _sdf->Get<double>("max_pitch");
+  } else {
+    ROS_WARN("[%s][Servo camera]: max_pitch not defined. Setting to default value.", parent_name.c_str());
+    max_pitch = 1.57;
+  }
+
+  if (_sdf->HasElement("min_roll")) {
+    min_roll = _sdf->Get<double>("min_roll");
+  } else {
+    ROS_WARN("[%s][Servo camera]: min_roll not defined. Setting to default value.", parent_name.c_str());
+    min_roll = -0.5;
+  }
+  
+  if (_sdf->HasElement("max_roll")) {
+    max_roll = _sdf->Get<double>("max_roll");
+  } else {
+    ROS_WARN("[%s][Servo camera]: max_roll not defined. Setting to default value.", parent_name.c_str());
+    max_roll = 0.5;
+  }
+
+  if (_sdf->HasElement("tilt_update_rate")) {
+    update_rate = _sdf->Get<double>("tilt_update_rate");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Update_rate not defined. Setting to default value.", parent_name.c_str());
+    update_rate = 30;
+  }
+
+  if (_sdf->HasElement("joint_name_pitch")) {
+    joint_name_pitch = _sdf->Get<std::string>("joint_name_pitch");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Joint name pitch not defined.", parent_name.c_str());
+  }
+
+  if (_sdf->HasElement("joint_name_roll")) {
+    joint_name_roll = _sdf->Get<std::string>("joint_name_roll");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Joint name roll not defined.", parent_name.c_str());
+  }
+
+  if (_sdf->HasElement("parent_link_pitch")) {
+    parent_link_pitch = _sdf->Get<std::string>("parent_link_pitch");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Parent link pitch not defined.", parent_name.c_str());
+  }
+
+  if (_sdf->HasElement("parent_link_roll")) {
+    parent_link_roll = _sdf->Get<std::string>("parent_link_roll");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Parent link roll not defined.", parent_name.c_str());
+  }
+
+  if (_sdf->HasElement("compensate_tilt_pitch")) {
+    compensate_tilt_pitch = _sdf->Get<bool>("compensate_tilt_pitch");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Tilt pitch compensation not defined.", parent_name.c_str());
+  }
+
+  if (_sdf->HasElement("compensate_tilt_roll")) {
+    compensate_tilt_roll = _sdf->Get<bool>("compensate_tilt_roll");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Tilt roll compensation not defined.", parent_name.c_str());
+  }
+//}
 
   // initialize ROS
   int    argc = 0;
@@ -163,164 +191,200 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   ros::init(argc, argv, "servo_camera_plugin", ros::init_options::NoSigintHandler);
   nh = new ros::NodeHandle("~");
 
-  change_state_srv = nh->serviceClient<gazebo_msgs::SetModelState>("/gazebo/set_model_state");
-  spawn_srv        = nh->serviceClient<gazebo_msgs::SpawnModel>("/gazebo/spawn_sdf_model");
-
-  // create ROS services to control the light
+  // ROS subscriber for control of roll and pitch of camera
   std::stringstream ss;
-  ss << "/" << parent_name << "/servo_camera/set_pitch";
-  pitch_sub = nh->subscribe(ss.str().c_str(), 1, &ServoCameraPlugin::pitchCallback, this);
-  ss.str(std::string());
-  ss << "/" << parent_name << "/servo_camera/compensate_tilt";
-  tilt_compensation_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationCallback, this);
+  ss << "/" << parent_name << "/servo_camera/desired_orientation";
+  camera_orientation_sub = nh->subscribe(ss.str().c_str(), 1, &ServoCameraPlugin::desiredOrientationCallback, this);
 
-  spawn_delay_remaining_loops = spawn_delay_sec * update_rate;
-  camera_spawned              = false;
+  // ROS services for triggering roll and pitch tilt compensation
+  ss.str(std::string());
+  ss << "/" << parent_name << "/servo_camera/compensate_tilt_pitch";
+  tilt_compensation_pitch_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationPitchCallback, this);
+
+  ss.str(std::string());
+  ss << "/" << parent_name << "/servo_camera/compensate_tilt_roll";
+  tilt_compensation_roll_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationPitchCallback, this);
 
   camera_timer = nh->createTimer(ros::Rate(update_rate), &ServoCameraPlugin::cameraTimerCallback, this);
 
   updateConnection = event::Events::ConnectWorldUpdateBegin(std::bind(&ServoCameraPlugin::OnUpdate, this));
 
+  initialized              = true;
+
   ROS_INFO("[%s][Servo camera]: Servo camera initialized.", parent_name.c_str());
-}
-//}
-
-/* convertEulerToQuaternion() //{ */
-void ServoCameraPlugin::convertEulerToQuaternion(double roll_offset, double pitch_offset, double yaw_offset) {
-  offset.Rot() = ignition::math::Quaternion<double>(roll_offset, pitch_offset, yaw_offset);
-}
-//}
-
-/* spawnCamera() */  //{
-bool ServoCameraPlugin::spawnCamera() {
-  std::stringstream       ss;
-  gazebo_msgs::SpawnModel spawn_call;
-  spawn_call.request.reference_frame = parent_name;
-  spawn_call.request.model_xml       = camera_model;
-  ss.str(std::string());
-  ss << parent_name << "_camera_panel";
-  spawn_call.request.model_name = ss.str().c_str();
-  spawn_srv.call(spawn_call);
-  if (spawn_call.response.success) {
-    ROS_INFO("[%s][servo_camera]: Camera spawned.", parent_name.c_str());
-    camera_spawned = true;
-  } else {
-    ROS_WARN("[%s]: Spawn not succesfull, msg: %s", ros::this_node::getName().c_str(), spawn_call.response.status_message.c_str());
-  }
-  return spawn_call.response.success;
 }
 //}
 
 /* cameraTimerCallback */  //{
 void ServoCameraPlugin::cameraTimerCallback(const ros::TimerEvent &event) {
-  if (!camera_spawned) {
-    if (spawn_delay_remaining_loops < 0) {
-      spawnCamera();
-    } else {
-      spawn_delay_remaining_loops--;
-    }
+
+  if (!initialized) { 
+    return;
   }
-  if (camera_spawned) {
-    moveCamera();
-  }
+
+  moveCamera();
 }
 //}
 
 /* pitchCallback */  //{
-void ServoCameraPlugin::pitchCallback(const std_msgs::Float32 &msg) {
-  /* ROS_INFO("[%s][Servo camera]: Change camera pitch!", parent_name.c_str()); */
-  desired_pitch = fmod(msg.data + 2 * M_PI, 2 * M_PI);
+void ServoCameraPlugin::desiredOrientationCallback(const std_msgs::Float32MultiArray &msg) {
+
+  if (msg.data.size() != 2) { 
+    ROS_INFO("[%s][Servo camera]: cameraOrientationCallback: Invalid request. Unexpected size of data.", parent_name.c_str());
+    return;
+  }
+
+  std::scoped_lock lock(mutex_desired_orientation);
+  desired_pitch = fmin(fmax(min_pitch, msg.data[1]), max_pitch); // clip value in limits
+  desired_pitch = fmod(desired_pitch + 2 * M_PI, 2 * M_PI);
+  ROS_INFO("[%s][Servo camera]: Change camera pitch to %.2f! Requested unlimited pitch = %.2f", parent_name.c_str(), desired_pitch, msg.data[1]);
+
+  desired_roll = fmin(fmax(min_roll, msg.data[0]), max_roll); // clip value in limits
+  desired_roll = fmod(desired_roll + 2 * M_PI, 2 * M_PI);
+  ROS_INFO("[%s][Servo camera]: Change camera roll to %.2f! Requested unlimited roll = %.2f", parent_name.c_str(), desired_pitch, msg.data[0]);
+
 }
 //}
 
-/* triggerTiltCompensationCallback() */  //{
-bool ServoCameraPlugin::triggerTiltCompensationCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
-  ROS_INFO("[%s][Servo camera]: Trigger tilt compensation!", parent_name.c_str());
+/* triggerTiltCompensationPitchCallback() */  //{
+bool ServoCameraPlugin::triggerTiltCompensationPitchCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
 
-  compensate_tilt = req.data;
-  res.message = compensate_tilt ? "tilt compensation enabled" : "tilt compensation disabled";
+  ROS_INFO("[%s][Servo camera]: Trigger tilt compensation pitch!", parent_name.c_str());
+
+  compensate_tilt_pitch = req.data;
+  res.message     = compensate_tilt_pitch ? "tilt compensation enabled" : "tilt compensation disabled";
   ROS_WARN("[%s][Servo Camera]: %s.", parent_name.c_str(), res.message.c_str());
 
   res.success = true;
   return res.success;
+
+}
+//}
+
+/* triggerTiltCompensationRollCallback() */  //{
+bool ServoCameraPlugin::triggerTiltCompensationRollCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
+
+  ROS_INFO("[%s][Servo camera]: Trigger tilt compensation roll!", parent_name.c_str());
+
+  compensate_tilt_roll = req.data;
+  res.message     = compensate_tilt_roll ? "tilt compensation enabled" : "tilt compensation disabled";
+  ROS_WARN("[%s][Servo Camera]: %s.", parent_name.c_str(), res.message.c_str());
+
+  res.success = true;
+  return res.success;
+
 }
 //}
 
 /* moveCamera() //{ */
 void ServoCameraPlugin::moveCamera() {
-  std::stringstream ss;
-  ss << parent_name << "_camera_panel";
-  gazebo_msgs::SetModelState srv;
-  srv.request.model_state.twist.linear.x     = 0.0;
-  srv.request.model_state.twist.linear.y     = 0.0;
-  srv.request.model_state.twist.linear.z     = 0.0;
-  srv.request.model_state.model_name         = ss.str().c_str();
-  srv.request.model_state.pose.position.x    = spawn_point.Pos().X();
-  srv.request.model_state.pose.position.y    = spawn_point.Pos().Y();
-  srv.request.model_state.pose.position.z    = spawn_point.Pos().Z();
-  srv.request.model_state.pose.orientation.x = spawn_point.Rot().X();
-  srv.request.model_state.pose.orientation.y = spawn_point.Rot().Y();
-  srv.request.model_state.pose.orientation.z = spawn_point.Rot().Z();
-  srv.request.model_state.pose.orientation.w = spawn_point.Rot().W();
 
-  double abs_diff = abs(offset_pitch - desired_pitch);
-  double min_diff = abs_diff > M_PI ? 2 * M_PI - abs_diff : abs_diff;
+  {
+    std::scoped_lock lock(mutex_desired_orientation, mutex_model_orientation);
 
-  if (min_diff > 1e-5) {
-    double dir = desired_pitch > offset_pitch ? 1.0 : -1.0;
-    dir        = abs(min_diff - abs_diff) > 1e-5 ? -1.0 * dir : dir;
-    offset_pitch += dir * fmin(abs(desired_pitch - offset_pitch), max_pitch_rate / update_rate);
-    convertEulerToQuaternion(offset_roll, offset_pitch, offset_yaw);
-    offset_pitch = fmod(offset_pitch + 2 * M_PI, 2 * M_PI);
+    // get desired pitch and roll angles compensated for current tilts of model
+    double compensated_pitch = compensate_tilt_pitch ? desired_pitch - model_pitch : desired_pitch;  
+    double compensated_roll = compensate_tilt_roll ? desired_roll - model_roll : desired_roll;  
+
+    // find required angle in next step that satisfies limits on angular_rates 
+    double           abs_diff_pitch = abs(offset_pitch - compensated_pitch);
+    double           min_diff_pitch = abs_diff_pitch > M_PI ? 2 * M_PI - abs_diff_pitch : abs_diff_pitch;
+
+    if (min_diff_pitch > 1e-2) {
+      double dir = compensated_pitch > offset_pitch ? 1.0 : -1.0;
+      dir        = abs(min_diff_pitch - abs_diff_pitch) > 1e-2 ? -1.0 * dir : dir;
+      offset_pitch += dir * fmin(abs(compensated_pitch - offset_pitch), max_pitch_rate / update_rate);
+      offset_pitch = fmod(offset_pitch + 2 * M_PI, 2 * M_PI);
+    }
+
+    double           abs_diff_roll = abs(offset_roll - compensated_roll);
+    double           min_diff_roll = abs_diff_roll > M_PI ? 2 * M_PI - abs_diff_roll : abs_diff_roll;
+
+    if (min_diff_roll > 1e-2) {
+      double dir = compensated_roll > offset_roll ? 1.0 : -1.0;
+      dir        = abs(min_diff_roll - abs_diff_roll) > 1e-2 ? -1.0 * dir : dir;
+      offset_roll += dir * fmin(abs(compensated_roll - offset_roll), max_roll_rate / update_rate);
+      offset_roll = fmod(offset_roll + 2 * M_PI, 2 * M_PI);
+    }
+
   }
 
-  if (model->GetLink("base_link") != NULL) {
-    if (model->GetLink("base_link")->GetChildJoints().size() != 0) {
-      int index = -1;
-      for (size_t i = 0; i < model->GetLink("base_link")->GetChildJoints().size(); i++) {
-        if (model->GetLink("base_link")->GetChildJoints()[i]->GetName() == joint_name) {
-          index = i;
+  // set joint coordinates based on computed required orientations of links
+  if (model->GetLink(parent_link_roll) != NULL) {
+
+    if (model->GetLink(parent_link_roll)->GetChildJoints().size() != 0) {
+
+      int index_roll = -1;
+      for (size_t i = 0; i < model->GetLink(parent_link_roll)->GetChildJoints().size(); i++) {
+        if (model->GetLink(parent_link_roll)->GetChildJoints()[i]->GetName() == joint_name_roll) {
+          index_roll = i;
           break;
         }
       }
-      if (index != -1) {
-        model->GetLink("base_link")->GetChildJoints()[index]->SetPosition(0, offset_pitch);
+
+      if (index_roll != -1) {
+        double applied_roll_offset = offset_roll > M_PI ? -2*M_PI + offset_roll : offset_roll;
+        model->GetLink(parent_link_roll)->GetChildJoints()[index_roll]->SetPosition(0, applied_roll_offset);
+        ROS_INFO_THROTTLE(5.0, "[%s]: Setting position of joint %s to %.2f.", ros::this_node::getName().c_str(), model->GetLink(parent_link_roll)->GetChildJoints()[index_roll]->GetName().c_str(), applied_roll_offset);
       } else {
-        ROS_WARN_THROTTLE(1.0, "[%s]: Servo camera macro joint doesn't found.", ros::this_node::getName().c_str());
+        ROS_WARN_THROTTLE(1.0, "[%s]: Servo camera roll joint did not found.", ros::this_node::getName().c_str());
       }
+
     } else {
-      ROS_WARN_THROTTLE(1.0, "[%s]: Base link has no child joints", ros::this_node::getName().c_str());
+      ROS_WARN_THROTTLE(1.0, "[%s]: Link %s has no child joints", ros::this_node::getName().c_str(), parent_link_roll.c_str());
     }
+
   } else {
-    ROS_WARN_THROTTLE(1.0, "[%s]: Model has no base link", ros::this_node::getName().c_str());
+    ROS_WARN_THROTTLE(1.0, "[%s]: Model has no link %s", ros::this_node::getName().c_str(), parent_link_roll.c_str());
   }
 
-  change_state_srv.call(srv);
-  if (!srv.response.success) {
-    ROS_WARN("[%s]: Unsuccessful model state change.", ros::this_node::getName().c_str());
+  if (model->GetLink(parent_link_pitch) != NULL) {
+
+    if (model->GetLink(parent_link_pitch)->GetChildJoints().size() != 0) {
+
+      int index_pitch = -1;
+      for (size_t i = 0; i < model->GetLink(parent_link_pitch)->GetChildJoints().size(); i++) {
+        if (model->GetLink(parent_link_pitch)->GetChildJoints()[i]->GetName() == joint_name_pitch) {
+          index_pitch = i;
+          break;
+        }
+      }
+
+      if (index_pitch != -1) {
+        double applied_pitch_offset = offset_pitch > M_PI ? -2*M_PI + offset_pitch : offset_pitch;
+        model->GetLink(parent_link_pitch)->GetChildJoints()[index_pitch]->SetPosition(0, applied_pitch_offset);
+        ROS_INFO_THROTTLE(5.0, "[%s]: Setting position of joint %s to %.2f.", ros::this_node::getName().c_str(), model->GetLink(parent_link_pitch)->GetChildJoints()[index_pitch]->GetName().c_str(), applied_pitch_offset);
+      } else {
+        ROS_WARN_THROTTLE(1.0, "[%s]: Servo camera pitch joint did not found.", ros::this_node::getName().c_str());
+      }
+
+    } else {
+      ROS_WARN_THROTTLE(1.0, "[%s]: Link %s has no child joints", ros::this_node::getName().c_str(), parent_link_pitch.c_str());
+    }
+
+  } else {
+    ROS_WARN_THROTTLE(1.0, "[%s]: Model has no link %s", ros::this_node::getName().c_str(), parent_link_pitch.c_str());
   }
+
 }
 //}
 
 /* updateCameraPosition() //{ */
-void ServoCameraPlugin::updateCameraPosition() {
+void ServoCameraPlugin::updateModelOrientation() {
+ 
+  // get tilts of model
+  std::scoped_lock lock(mutex_model_orientation);
   ignition::math::Pose3d model_pose = model->WorldPose();
+  model_roll = model_pose.Rot().Roll();
+  model_pitch = model_pose.Rot().Pitch();
+  ROS_INFO_THROTTLE(5.0, "[%s]: Updating model orientation.", ros::this_node::getName().c_str());
 
-  if (compensate_tilt) { // simulates perfect stabilization of pitch and roll angles
-    ignition::math::Vector3d dir = ignition::math::Vector3d(1.0, 0.0, 0.0);
-    dir                          = model->WorldPose().Rot() * dir;
-    double heading               = atan2(dir.Y(), dir.X());
-    model_pose.Rot()             = ignition::math::Quaternion<double>(0.0, 0.0, heading);
-  }
-
-  spawn_point.Rot() = model_pose.Rot() * offset.Rot();
-  spawn_point.Pos() = model_pose.Pos() + model_pose.Rot() * offset.Pos();
 }
 //}
 
 /* OnUpdate //{ */
 void ServoCameraPlugin::OnUpdate() {
-  updateCameraPosition();
+  updateModelOrientation();
 }
 //}
 
