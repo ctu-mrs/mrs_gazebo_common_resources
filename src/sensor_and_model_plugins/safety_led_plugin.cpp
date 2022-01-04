@@ -300,9 +300,9 @@ bool SafetyLedPlugin::spawnSafetyLed() {
   shifted_pose.Pos() = model_pose.Pos() + model_pose.Rot() * _pose_offset.Pos();
 
   gazebo_msgs::SpawnModel spawn_call;
-  spawn_call.request.initial_pose.position.x    = shifted_pose.X();
-  spawn_call.request.initial_pose.position.y    = shifted_pose.Y();
-  spawn_call.request.initial_pose.position.z    = shifted_pose.Z();
+  spawn_call.request.initial_pose.position.x    = shifted_pose.Pos().X();
+  spawn_call.request.initial_pose.position.y    = shifted_pose.Pos().Y();
+  spawn_call.request.initial_pose.position.z    = shifted_pose.Pos().Z();
   spawn_call.request.initial_pose.orientation.w = shifted_pose.Rot().W();
   spawn_call.request.initial_pose.orientation.x = shifted_pose.Rot().X();
   spawn_call.request.initial_pose.orientation.y = shifted_pose.Rot().Y();
