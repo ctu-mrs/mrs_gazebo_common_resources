@@ -28,10 +28,10 @@
       <real_time_update_rate>250</real_time_update_rate>
     </physics>
     <scene>
-      <shadows>0</shadows>
-      <sky>
-        <clouds/>
-      </sky>
+      <shadows>false</shadows>
+      <!-- <sky> -->
+      <!--   <clouds/> -->
+      <!-- </sky> -->
       <ambient>0.4 0.4 0.4 1</ambient>
       <background>0.7 0.7 0.7 1</background>
     </scene>
