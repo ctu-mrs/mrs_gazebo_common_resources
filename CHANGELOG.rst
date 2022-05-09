@@ -2,8 +2,8 @@
 Changelog for package mrs_gazebo_common_resources
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.3 (2022-05-09)
+------------------
 * fixes for lidars
 * + install in cmakelists
 * removed person model, too large
