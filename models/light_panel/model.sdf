@@ -21,8 +21,15 @@
       </spot>
     </light>
     <inertial>
-      <mass value="1e-3" />
-      <inertia ixx="1e-5" ixy="0.0" ixz="0.0" iyy="1e-5" iyz="0.0" izz="1e-5"/>
+      <mass>1e-3</mass>
+      <inertia>
+        <ixx>1e-5</ixx>
+        <ixy>0</ixy>
+        <ixz>0</ixz>
+        <iyy>1e-5</iyy>
+        <iyz>0</iyz>
+        <izz>1e-5</izz>
+      </inertia>
     </inertial>
     </link>
   </model>
