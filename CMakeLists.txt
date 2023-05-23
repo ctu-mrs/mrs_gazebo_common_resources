@@ -60,7 +60,6 @@ set(sensor_msgs
   msgs/SITLGps.proto
   msgs/Groundtruth.proto
   msgs/MagneticField.proto
-  msgs/CommandMotorSpeed.proto
   msgs/Float.proto
   )
 
