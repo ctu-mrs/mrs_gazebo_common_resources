@@ -78,7 +78,7 @@ void MotorSpeedRepublisher::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
   cmd_motor_sub_ = node_handle_->Subscribe<std_msgs::msgs::Float>("~/" + model_name_ + motor_speed_topic_, &MotorSpeedRepublisher::callbackMotorSpeed, this);
 
   ros_nh_        = ros::NodeHandle("~");
-  cmd_motor_pub_ = ros_nh_.advertise<std_msgs::Float64>("/" + model_name_, 1);
+  cmd_motor_pub_ = ros_nh_.advertise<std_msgs::Float64>("/" + model_name_ + "/" + motor_speed_topic_, 1);
 
   gzmsg << "[motor_speed_republisher_plugin]: Initialized.\n";
 }
