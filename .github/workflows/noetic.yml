@@ -2,43 +2,44 @@ name: Noetic
 
 on:
   push:
-    branches: [ master ]
-    paths-ignore:
-      - '**/README.md'
-      - '**.yaml'
-      - '**.launch'
-  pull_request:
-    branches: [ master ]
 
-  schedule:
-    - cron:  '0 0 * * *' # at the end of every day
+    branches: [ hw_api ]
+
+  pull_request:
+    branches: [ hw_api ]
+
+  # schedule:
+  #   - cron:  '0 0 * * *' # at the end of every day
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
 
-  cancel:
-
-    name: Cancel Previous Runs
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.11.0
-        with:
-          access_token: ${{ github.token }}
-
   build:
     runs-on: ubuntu-20.04
+
+    env:
+      PUSH_TOKEN: ${{ secrets.PUSH_TOKEN }}
+
     steps:
 
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # fetch the whole history
+          fetch-depth: 0
 
-      - name: Install
-        run: ./.ci/install.sh
+      - name: Checkout CI scripts
+        uses: actions/checkout@v3
+        with:
+          repository: ctu-mrs/ci_scripts
+          path: .ci_scripts
+          token: ${{ secrets.PUSH_TOKEN }}
+
+      - name: Install ROS
+        run: .ci_scripts/package_build/install_ros.sh
 
       - name: Build
-        run: ./.ci/build.sh
+        run: .ci_scripts/package_build/build_package.sh
+
+      - name: Deploy
+        run: .ci_scripts/package_build/deploy_deb.sh

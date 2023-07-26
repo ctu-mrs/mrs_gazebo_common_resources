@@ -231,7 +231,7 @@ target_link_libraries(MRSSafetyLedPlugin
 ## |                           Install                          |
 ## --------------------------------------------------------------
 
-install(TARGETS  MRSGazeboGuiManager MRSGazeboRvizCameraSynchronizer MRSGazeboStaticTransformRepublisher MRSGazeboRangefinderPlugin MRSGazebo2DLidarPlugin MRSGazebo3DLidarPlugin MRSGazebo3DLidarGpuPlugin MRSGazeboCameraPlugin MRSGazeboRealsensePlugin MRSGazeboParachutePlugin MRSGazeboWaterGunPlugin MRSGazeboGPSPlugin MRSGazeboMagnetometerPlugin MRSGazeboLightPlugin MRSGazeboServoCameraPlugin MRSGazeboDynamicModelPlugin
+install(TARGETS MRSGazeboGuiManager MRSGazeboRvizCameraSynchronizer MRSGazeboStaticTransformRepublisher MRSGazeboRangefinderPlugin MRSGazebo2DLidarPlugin MRSGazebo3DLidarPlugin MRSGazebo3DLidarGpuPlugin MRSGazeboCameraPlugin MRSGazeboRealsensePlugin MRSGazeboParachutePlugin MRSGazeboWaterGunPlugin MRSGazeboGPSPlugin MRSGazeboMagnetometerPlugin MRSGazeboLightPlugin MRSGazeboServoCameraPlugin MRSGazeboDynamicModelPlugin
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
@@ -244,8 +244,3 @@ install(DIRECTORY models/
 install(DIRECTORY worlds/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/worlds
 )
-
-install(DIRECTORY ./
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-  FILES_MATCHING PATTERN "*.xml"
-  )
