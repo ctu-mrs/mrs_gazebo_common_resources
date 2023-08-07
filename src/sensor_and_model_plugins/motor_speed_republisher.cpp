@@ -32,7 +32,7 @@ private:
   std::string motor_speed_topic_;
 
   transport::NodePtr       node_handle_;
-  transport::SubscriberPtr cmd_motor_sub_;
+  transport::SubscriberPtr motor_speed_sub_;
 
   physics::ModelPtr model_;
   physics::WorldPtr world_;
@@ -41,7 +41,7 @@ private:
   void          callbackMotorSpeed(MotorSpeedPtr &msg_in);
 
   ros::NodeHandle ros_nh_;
-  ros::Publisher  cmd_motor_pub_;
+  ros::Publisher  motor_speed_pub_;
 };
 
 MotorSpeedRepublisher::MotorSpeedRepublisher() {
@@ -75,10 +75,10 @@ void MotorSpeedRepublisher::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     gzerr << "[motor_speed_republisher] Please specify motorSpeedTopic.\n";
   }
 
-  cmd_motor_sub_ = node_handle_->Subscribe<std_msgs::msgs::Float>("~/" + model_name_ + motor_speed_topic_, &MotorSpeedRepublisher::callbackMotorSpeed, this);
+  motor_speed_sub_ = node_handle_->Subscribe<std_msgs::msgs::Float>("~/" + model_name_ + motor_speed_topic_, &MotorSpeedRepublisher::callbackMotorSpeed, this);
 
   ros_nh_        = ros::NodeHandle("~");
-  cmd_motor_pub_ = ros_nh_.advertise<std_msgs::Float64>("/" + model_name_ + "/" + motor_speed_topic_, 1);
+  motor_speed_pub_ = ros_nh_.advertise<std_msgs::Float64>("/" + model_name_ + "/" + motor_speed_topic_, 1);
 
   gzmsg << "[motor_speed_republisher_plugin]: Initialized.\n";
 }
@@ -95,10 +95,10 @@ void MotorSpeedRepublisher::callbackMotorSpeed(MotorSpeedPtr &msg_in) {
   std_msgs::Float64 msg_out;
   msg_out.data = msg_in->data();
   try {
-    cmd_motor_pub_.publish(msg_out);
+    motor_speed_pub_.publish(msg_out);
   }
   catch (...) {
-    ROS_ERROR("exception caught during publishing topic '%s'", cmd_motor_pub_.getTopic().c_str());
+    ROS_ERROR("exception caught during publishing topic '%s'", motor_speed_pub_.getTopic().c_str());
   }
 }
 /*//}*/
