@@ -17,7 +17,7 @@
   <depend>tf2_ros</depend>
   <depend>tf2_msgs</depend>
   <depend>std_msgs</depend>
-  <depend>qt</depend>
+  <depend>libqt5-widgets</depend>
   <depend>gazebo</depend>
   <depend>gazebo_ros</depend>
   <depend>gazebo_plugins</depend>
