@@ -93,6 +93,7 @@ set(LIBRARIES
   MrsGazeboCommonResources_LightPlugin
   MrsGazeboCommonResources_ServoCameraPlugin
   MrsGazeboCommonResources_DynamicModelPlugin
+  MrsGazeboCommonResources_SafetyLedPlugin
   )
 
 catkin_package(
