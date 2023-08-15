@@ -6,21 +6,24 @@
 
   <author email="vojtech.spurny@fel.cvut.cz">Vojtech Spurny</author>
   <maintainer email="vojtech.spurny@fel.cvut.cz">Vojtech Spurny</maintainer>
+  <maintainer email="tomas.baca@fel.cvut.cz">Tomas Baca</maintainer>
 
   <license>BSD 3-Clause</license>
 
   <buildtool_depend>catkin</buildtool_depend>
-  <build_depend>roscpp</build_depend>
-  <build_export_depend>boost</build_export_depend>
-  <depend>geometry_msgs</depend>
-  <depend>tf2</depend>
-  <depend>tf2_ros</depend>
-  <depend>tf2_msgs</depend>
-  <depend>std_msgs</depend>
-  <depend>libqt5-widgets</depend>
-  <depend>gazebo</depend>
-  <depend>gazebo_ros</depend>
+
   <depend>gazebo_plugins</depend>
+  <depend>gazebo_ros</depend>
+  <depend>geometry_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_msgs</depend>
+  <depend>tf2_ros</depend>
+
+  <depend>gazebo</depend>
+  <depend>boost</depend>
+  <depend>libqt5-widgets</depend>
 
   <export>
     <!-- gazebo_ros_paths_plugin automatically adds these to
