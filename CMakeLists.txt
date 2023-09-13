@@ -94,6 +94,7 @@ set(LIBRARIES
   MrsGazeboCommonResources_ServoCameraPlugin
   MrsGazeboCommonResources_DynamicModelPlugin
   MrsGazeboCommonResources_SafetyLedPlugin
+  MrsGazeboCommonResources_FluidResistancePlugin
   )
 
 catkin_package(
@@ -326,6 +327,17 @@ target_link_libraries(MrsGazeboCommonResources_SafetyLedPlugin
   ${Boost_LIBRARIES}
   )
 
+# FluidResistancePlugin
+
+add_library(MrsGazeboCommonResources_FluidResistancePlugin SHARED
+  src/physics_plugins/fluid_resistance_plugin.cpp
+  )
+
+target_link_libraries(MrsGazeboCommonResources_FluidResistancePlugin
+  ${GAZEBO_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  )
 ## --------------------------------------------------------------
 ## |                           Install                          |
 ## --------------------------------------------------------------
