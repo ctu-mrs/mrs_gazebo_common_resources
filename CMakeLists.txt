@@ -19,7 +19,7 @@ set(CATKIN_DEPENDENCIES
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   ${CATKIN_DEPENDENCIES}
-)
+  )
 
 # include Gazebo
 find_package(gazebo REQUIRED)
@@ -60,13 +60,25 @@ endforeach()
 # PROTOBUF_IMPORT_DIRS has to be set before
 find_package(Protobuf REQUIRED)
 
+# set(mav_msgs
+#   msgs/CommandMotorSpeed.proto
+#   msgs/MotorSpeed.proto
+#   )
+
+# set(physics_msgs
+#     msgs/Wind.proto
+#     )
+
 set(sensor_msgs
   msgs/SITLGps.proto
   msgs/Groundtruth.proto
   msgs/MagneticField.proto
+  msgs/Float.proto
   )
 
 PROTOBUF_GENERATE_CPP(SEN_PROTO_SRCS SEN_PROTO_HDRS ${sensor_msgs})
+# PROTOBUF_GENERATE_CPP(MAV_PROTO_SRCS MAV_PROTO_HDRS ${mav_msgs})
+# PROTOBUF_GENERATE_CPP(PHY_PROTO_SRCS PHY_PROTO_HDRS ${physics_msgs})
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -95,14 +107,16 @@ set(LIBRARIES
   MrsGazeboCommonResources_DynamicModelPlugin
   MrsGazeboCommonResources_SafetyLedPlugin
   MrsGazeboCommonResources_FluidResistancePlugin
+  MrsGazeboCommonResources_MotorSpeedRepublisherPlugin
+  # MrsGazeboCommonResources_MotorPropModelPlugin
   )
 
 catkin_package(
-   INCLUDE_DIRS include
-   CATKIN_DEPENDS ${CATKIN_DEPENDENCIES}
-   DEPENDS GAZEBO Qt5Widgets Boost Eigen OpenCV
-   LIBRARIES ${LIBRARIES}
-   )
+  INCLUDE_DIRS include
+  CATKIN_DEPENDS ${CATKIN_DEPENDENCIES}
+  DEPENDS GAZEBO Qt5Widgets Boost Eigen OpenCV
+  LIBRARIES ${LIBRARIES}
+  )
 
 ###########
 ## Build ##
@@ -338,6 +352,34 @@ target_link_libraries(MrsGazeboCommonResources_FluidResistancePlugin
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   )
+
+# MotorSpeedRepublisherPlugin
+
+add_library(MrsGazeboCommonResources_MotorSpeedRepublisherPlugin
+  SHARED src/sensor_and_model_plugins/motor_speed_republisher.cpp
+  )
+
+target_link_libraries(MrsGazeboCommonResources_MotorSpeedRepublisherPlugin
+  ${GAZEBO_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  )
+
+# MotorPropModelPlugin
+
+# add_library(mav_msgs SHARED ${MAV_PROTO_SRCS})
+# add_library(physics_msgs SHARED ${PHY_PROTO_SRCS})
+
+# add_library(MrsGazeboCommonResources_MotorPropModelPlugin SHARED
+#   src/physics_plugins/motor_prop_model_plugin.cpp
+#   )
+
+# target_link_libraries(MrsGazeboCommonResources_MotorPropModelPlugin
+#   ${GAZEBO_LIBRARIES}
+#   ${catkin_LIBRARIES}
+#   ${Boost_LIBRARIES}
+#   )
+
 ## --------------------------------------------------------------
 ## |                           Install                          |
 ## --------------------------------------------------------------
@@ -350,8 +392,8 @@ install(TARGETS ${LIBRARIES}
 
 install(DIRECTORY models/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/models
-)
+  )
 
 install(DIRECTORY worlds/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/worlds
-)
+  )
