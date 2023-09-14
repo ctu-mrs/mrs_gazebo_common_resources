@@ -50,9 +50,6 @@ private:
 private:
   event::ConnectionPtr updateConnection;  // Pointer to the update event connection
 
-  // TODO: remove this variable and exchange it for x_res, ... to be abel update by topic
-  double fluid_resistance_index = 1.0;
-
 private:
   std::unique_ptr<ros::NodeHandle> rosNode;  // node use for ROS transport
 
@@ -67,7 +64,7 @@ private:
   physics::LinkPtr link_to_apply_resistance;  // ROS subscriber
 
 private:
-  std::string fluid_resistanceTopicName = "fluid_resistance";
+  std::string FluidResistanceTopicName = "fluid_resistance";
 
 private:
   std::string NameLinkToApplyResistance = "base_link";
@@ -100,17 +97,17 @@ void FluidResistancePlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf
   std::cout << "Using Fluid Resistance PLugin" << std::endl;
 
   /* load elements //{ */
-  if (_sdf->HasElement("fluid_resistanceTopicName")) {
-    fluid_resistanceTopicName = _sdf->Get<std::string>("fluid_resistanceTopicName");
+  if (_sdf->HasElement("FluidResistanceTopicName")) {
+    FluidResistanceTopicName = _sdf->Get<std::string>("FluidResistanceTopicName");
   } else {
-    ROS_WARN("No Topic Given name given, setting default name %s", fluid_resistanceTopicName.c_str());
+    ROS_WARN("[FluidResistancePlugin]: No Topic Given name given, setting default name %s", FluidResistanceTopicName.c_str());
   }
 
   if (_sdf->HasElement("NameLinkToApplyResistance")) {
     NameLinkToApplyResistance = _sdf->Get<std::string>("NameLinkToApplyResistance");
   } else {
     ROS_WARN(
-        "No NameLinkToApplyResistance Given name given, setting default "
+        "[FluidResistancePlugin]: No NameLinkToApplyResistance Given name given, setting default "
         "name %s",
         NameLinkToApplyResistance.c_str());
   }
@@ -119,7 +116,7 @@ void FluidResistancePlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf
     rate = _sdf->Get<double>("rate");
   } else {
     ROS_WARN(
-        "No rate Given name given, setting default "
+        "[FluidResistancePlugin]: No rate Given name given, setting default "
         "name %f",
         rate);
   }
@@ -128,7 +125,7 @@ void FluidResistancePlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf
     res_x = _sdf->Get<double>("res_x");
   } else {
     ROS_WARN(
-        "No res_x Given name given, setting default "
+        "[FluidResistancePlugin]: No res_x Given name given, setting default "
         "name %f",
         res_x);
   }
@@ -137,7 +134,7 @@ void FluidResistancePlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf
     res_y = _sdf->Get<double>("res_y");
   } else {
     ROS_WARN(
-        "No res_y Given name given, setting default "
+        "[FluidResistancePlugin]: No res_y Given name given, setting default "
         "name %f",
         res_y);
   }
@@ -146,12 +143,12 @@ void FluidResistancePlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf
     res_z = _sdf->Get<double>("res_z");
   } else {
     ROS_WARN(
-        "No res_z Given name given, setting default "
+        "[FluidResistancePlugin]: No res_z Given name given, setting default "
         "name %f",
         res_z);
   }
 
-  ROS_WARN("All elements loaded successfully!");
+  ROS_INFO("[FluidResistancePlugin]: All elements loaded successfully!");
 
   //}
 
@@ -186,17 +183,17 @@ void FluidResistancePlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf
 
   // Freq
   ros::SubscribeOptions so = ros::SubscribeOptions::create<geometry_msgs::Vector3>(
-      fluid_resistanceTopicName, 1, boost::bind(&FluidResistancePlugin::OnRosMsg, this, _1), ros::VoidPtr(), &rosQueue);
+      FluidResistanceTopicName, 1, boost::bind(&FluidResistancePlugin::OnRosMsg, this, _1), ros::VoidPtr(), &rosQueue);
   rosSub = rosNode->subscribe(so);
 
   // Spin up the queue helper thread.
   rosQueueThread = std::thread(std::bind(&FluidResistancePlugin::QueueThread, this));
 
   ROS_WARN(
-      "Loaded FluidResistance Plugin with parent...%s, With Fluid "
-      "Resistance = %f "
+      "[FluidResistancePlugin]: Loaded FluidResistance Plugin with parent...%s, With Fluid "
+      "Resistance = ( %f, %f, %f) "
       "Started ",
-      model->GetName().c_str(), fluid_resistance_index);
+      model->GetName().c_str(), res_x, res_y, res_z);
 }
 //}
 
@@ -214,7 +211,7 @@ void FluidResistancePlugin::OnUpdate() {
   float dt = current_time - last_time;
 
   if (dt <= period) {
-    ROS_DEBUG(">>>>>>>>>>TimePassed = %f, TimePeriod =%f ", dt, period);
+    ROS_DEBUG("[FluidResistancePlugin]: >>>>>>>>>>TimePassed = %f, TimePeriod =%f ", dt, period);
     return;
   } else {
     last_time = current_time;
@@ -244,7 +241,7 @@ void FluidResistancePlugin::ApplyResistance() {
   math::Vector3 force, torque;
 #endif
 
-  ROS_WARN("LinearSpeed = [%f,%f,%f] ", now_lin_vel.X(), now_lin_vel.Y(), now_lin_vel.Z());
+  /* ROS_WARN("[FluidResistancePlugin]: LinearSpeed = [%f,%f,%f] ", now_lin_vel.X(), now_lin_vel.Y(), now_lin_vel.Z()); */
 
   force.X(-1.0 * res_x * now_lin_vel.X());
   force.Y(-1.0 * res_y * now_lin_vel.Y());
@@ -258,7 +255,7 @@ void FluidResistancePlugin::ApplyResistance() {
   link_to_apply_resistance->AddRelativeTorque(torque - link_to_apply_resistance->GetInertial()->GetCoG().Cross(force));
 #endif
 
-  ROS_WARN("FluidResistanceApplying = [%f,%f,%f] ", force.X(), force.Y(), force.Z());
+  /* ROS_WARN("[FluidResistancePlugin]: FluidResistanceApplying = [%f,%f,%f] ", force.X(), force.Y(), force.Z()); */
 }
 //}
 
@@ -268,7 +265,7 @@ void FluidResistancePlugin::OnRosMsg(const geometry_msgs::Vector3ConstPtr &_msg)
   res_x = _msg->x;
   res_y = _msg->y;
   res_z = _msg->z;
-  ROS_WARN("fluid resistance changed!!");
+  ROS_WARN("[FluidResistancePlugin]: Fluid resistance changed to (%f, %f, %f)!!", res_x, res_y, res_z);
 }
 //}
 
