@@ -77,10 +77,12 @@ private:
 #endif
 
 private:
-  double rate  = 1.0;
-  double res_x = 1.0;
-  double res_y = 1.0;
-  double res_z = 1.0;
+  double rate       = 1.0;
+  double res_x      = 1.0;
+  double res_y      = 1.0;
+  double res_z      = 1.0;
+  double model_mass = 1.13;
+  bool   verbose    = false;
 
 private:
   float last_time = 0.0;
@@ -116,16 +118,25 @@ void FluidResistancePlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf
     rate = _sdf->Get<double>("rate");
   } else {
     ROS_WARN(
-        "[FluidResistancePlugin]: No rate Given name given, setting default "
+        "[FluidResistancePlugin]: No rate Given, setting default "
         "name %f",
         rate);
+  }
+
+  if (_sdf->HasElement("model_mass")) {
+    model_mass = _sdf->Get<double>("model_mass");
+  } else {
+    ROS_WARN(
+        "[FluidResistancePlugin]: No model_mass Given, setting default "
+        "name %f",
+        model_mass);
   }
 
   if (_sdf->HasElement("res_x")) {
     res_x = _sdf->Get<double>("res_x");
   } else {
     ROS_WARN(
-        "[FluidResistancePlugin]: No res_x Given name given, setting default "
+        "[FluidResistancePlugin]: No res_x Given, setting default "
         "name %f",
         res_x);
   }
@@ -134,7 +145,7 @@ void FluidResistancePlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf
     res_y = _sdf->Get<double>("res_y");
   } else {
     ROS_WARN(
-        "[FluidResistancePlugin]: No res_y Given name given, setting default "
+        "[FluidResistancePlugin]: No res_y Given, setting default "
         "name %f",
         res_y);
   }
@@ -143,12 +154,23 @@ void FluidResistancePlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf
     res_z = _sdf->Get<double>("res_z");
   } else {
     ROS_WARN(
-        "[FluidResistancePlugin]: No res_z Given name given, setting default "
+        "[FluidResistancePlugin]: No res_z Given, setting default "
         "name %f",
         res_z);
   }
 
-  ROS_INFO("[FluidResistancePlugin]: All elements loaded successfully!");
+  if (_sdf->HasElement("verbose")) {
+    verbose = _sdf->Get<double>("verbose");
+  } else {
+    ROS_WARN(
+        "[FluidResistancePlugin]: No verbose Given, setting default "
+        "name %d",
+        verbose);
+  }
+
+  if (verbose) {
+    ROS_INFO("[FluidResistancePlugin]: All elements loaded successfully!");
+  }
 
   //}
 
@@ -241,11 +263,13 @@ void FluidResistancePlugin::ApplyResistance() {
   math::Vector3 force, torque;
 #endif
 
-  /* ROS_WARN("[FluidResistancePlugin]: LinearSpeed = [%f,%f,%f] ", now_lin_vel.X(), now_lin_vel.Y(), now_lin_vel.Z()); */
+  if (verbose) {
+    ROS_WARN("[FluidResistancePlugin]: LinearSpeed = [%f,%f,%f] ", now_lin_vel.X(), now_lin_vel.Y(), now_lin_vel.Z());
+  }
 
-  force.X(-1.0 * res_x * now_lin_vel.X());
-  force.Y(-1.0 * res_y * now_lin_vel.Y());
-  force.Z(-1.0 * res_z * now_lin_vel.Z());
+  force.X(-1.0 * (res_x * model_mass) * now_lin_vel.X());
+  force.Y(-1.0 * (res_y * model_mass) * now_lin_vel.Y());
+  force.Z(-1.0 * (res_z * model_mass) * now_lin_vel.Z());
 
   // Applying force to uav
   link_to_apply_resistance->AddRelativeForce(force);
@@ -254,8 +278,9 @@ void FluidResistancePlugin::ApplyResistance() {
 #else
   link_to_apply_resistance->AddRelativeTorque(torque - link_to_apply_resistance->GetInertial()->GetCoG().Cross(force));
 #endif
-
-  /* ROS_WARN("[FluidResistancePlugin]: FluidResistanceApplying = [%f,%f,%f] ", force.X(), force.Y(), force.Z()); */
+  if (verbose) {
+    ROS_WARN("[FluidResistancePlugin]: FluidResistanceApplying = [%f,%f,%f] ", force.X(), force.Y(), force.Z());
+  }
 }
 //}
 

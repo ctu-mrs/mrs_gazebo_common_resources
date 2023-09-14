@@ -7,7 +7,7 @@ This directory includes plugins that somehow modify the physics behavior of the 
 * motor_prop_model_plugin
 
 ### Fluid Resistance
-This plugin models linear resistance of the air (Fd = resistance_constant * linear_body_velocity).
+This plugin models linear resistance of the air (Fd = model_mass * resistance_constant * linear_body_velocity).
 You can set resistance coefficientsa (for every axis in body frame) in model definition using fluid resistance macro.
 It is also possible to change fluid resistance while simulation is running using topic */fluid_resistance*.
 ```
