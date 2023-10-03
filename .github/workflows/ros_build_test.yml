@@ -1,4 +1,4 @@
-name: ros_package_build
+name: ros_build_test
 
 on:
 
