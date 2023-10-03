@@ -19,7 +19,7 @@
  */
 
 
-#include "motor_prop_model.h"
+#include <motor_prop_model.h>
 #include <ignition/math.hh>
 
 namespace gazebo {
