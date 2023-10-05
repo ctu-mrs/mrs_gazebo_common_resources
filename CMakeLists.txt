@@ -347,8 +347,9 @@ target_link_libraries(MrsGazeboCommonResources_FluidResistancePlugin
 
 # MotorSpeedRepublisherPlugin
 
-add_library(MrsGazeboCommonResources_MotorSpeedRepublisherPlugin
-  SHARED src/sensor_and_model_plugins/motor_speed_republisher.cpp
+add_library(MrsGazeboCommonResources_MotorSpeedRepublisherPlugin SHARED
+  src/sensor_and_model_plugins/motor_speed_republisher.cpp
+  ${SEN_PROTO_SRCS}
   )
 
 target_link_libraries(MrsGazeboCommonResources_MotorSpeedRepublisherPlugin
