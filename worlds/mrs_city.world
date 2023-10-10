@@ -1,6 +1,6 @@
 <sdf version='1.7'>
   <world name='default'>
-    <plugin name='mrs_gazebo_static_transform_republisher_plugin' filename='libMRSGazeboStaticTransformRepublisher.so'/>
+    <plugin name='mrs_gazebo_static_transform_republisher_plugin' filename='libMrsGazeboCommonResources_StaticTransformRepublisher.so'/>
     <spherical_coordinates>
       <surface_model>EARTH_WGS84</surface_model>
       <latitude_deg>47.3977</latitude_deg>
@@ -126,7 +126,7 @@
         <projection_type>perspective</projection_type>
       </camera>
     </gui>
-    <plugin name='mrs_gazebo_rviz_cam_synchronizer' filename='libMRSGazeboRvizCameraSynchronizer.so'>
+    <plugin name='mrs_gazebo_rviz_cam_synchronizer' filename='libMrsGazeboCommonResources_RvizCameraSynchronizer.so'>
       <target_frame_id>gazebo_user_camera</target_frame_id>
       <world_origin_frame_id>uav1/gps_origin</world_origin_frame_id>
       <frame_to_follow>uav1</frame_to_follow>

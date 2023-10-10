@@ -3,7 +3,7 @@
 <sdf version="1.5">
   <world name="default">
     <!-- <plugin name="mrs_gazebo_link_attacher_plugin" filename="libMRSGazeboLinkAttacherPlugin.so"/> -->
-    <plugin name="mrs_gazebo_static_transform_republisher_plugin" filename="libMRSGazeboStaticTransformRepublisher.so"/>
+    <plugin name="mrs_gazebo_static_transform_republisher_plugin" filename="libMrsGazeboCommonResources_StaticTransformRepublisher.so"/>
       
     <!-- coordinate system {-->
     <spherical_coordinates>
@@ -142,7 +142,7 @@
     <!--}-->
 
     <!-- GUI frame synchronization {-->
-    <plugin name="mrs_gazebo_rviz_cam_synchronizer" filename="libMRSGazeboRvizCameraSynchronizer.so" >
+    <plugin name="mrs_gazebo_rviz_cam_synchronizer" filename="libMrsGazeboCommonResources_RvizCameraSynchronizer.so" >
       <target_frame_id>gazebo_user_camera</target_frame_id>
       <world_origin_frame_id>uav1/gps_origin</world_origin_frame_id>
       <frame_to_follow>uav1</frame_to_follow>
