@@ -42,9 +42,9 @@
     <!-- turn off shadows {-->
     <scene>
       <shadows>false</shadows>
-      <sky>
-        <clouds/>
-      </sky>
+      <!-- <sky> -->
+      <!--   <clouds/> -->
+      <!-- </sky> -->
     </scene>
     <!--}-->
 
