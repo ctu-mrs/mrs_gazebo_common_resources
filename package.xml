@@ -24,6 +24,7 @@
   <depend>gazebo</depend>
   <depend>boost</depend>
   <depend>libqt5-widgets</depend>
+  <depend>mav_msgs</depend>
 
   <export>
     <!-- gazebo_ros_paths_plugin automatically adds these to
