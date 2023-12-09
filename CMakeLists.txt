@@ -235,6 +235,34 @@ target_link_libraries(MrsGazeboCommonResources_RealsensePlugin
   ${OpenCV_LIBRARIES}
   )
 
+# OAKD Plugin: Only change yet is the Y_OFFSET to color frame
+
+add_library(MrsGazeboCommonResources_OakdPlugin SHARED
+  src/sensor_and_model_plugins/oakd_plugin.cpp
+  src/common/perlin_noise.cpp
+  )
+
+target_link_libraries(MrsGazeboCommonResources_OakdPlugin
+  ${GAZEBO_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  )
+
+# PicoflexxPlugin
+
+add_library(MrsGazeboCommonResources_PicoflexxPlugin SHARED
+  src/sensor_and_model_plugins/picoflexx_plugin.cpp
+  src/common/perlin_noise.cpp
+  )
+
+target_link_libraries(MrsGazeboCommonResources_PicoflexxPlugin
+  ${GAZEBO_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  )
+
 # ParachutePlugin
 
 add_library(MrsGazeboCommonResources_ParachutePlugin SHARED
