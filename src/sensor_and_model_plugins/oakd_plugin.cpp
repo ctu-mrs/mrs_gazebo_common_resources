@@ -72,9 +72,9 @@ const std::string IRED2_CAMERA_SUFFIX = "infra2";
 const std::string BASE_FRAME_SUFFIX   = "link";
 
 /// \brief A plugin that simulates Real Sense camera streams.
-/* class RealSensePlugin : public ModelPlugin //{ */
+/* class OakPlugin : public ModelPlugin //{ */
 
-class RealSensePlugin : public ModelPlugin {
+class OakPlugin : public ModelPlugin {
 
   /* dm_upscale() method //{ */
   void dm_upscale(const cv::Mat& in, cv::Mat& out, int scale) {
@@ -111,8 +111,8 @@ class RealSensePlugin : public ModelPlugin {
 
 public:
   /////////////////////////////////////////////////
-  /* RealSensePlugin() constructor //{ */
-  RealSensePlugin() {
+  /* OakPlugin() constructor //{ */
+  OakPlugin() {
     this->depthCam      = nullptr;
     this->iredStereoCam = nullptr;
     this->colorCam      = nullptr;
@@ -125,26 +125,26 @@ public:
   virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) {
 
     // Store a pointer to the this model
-    this->rsModel                = _model;
+    this->oakModel                = _model;
     std::string camera_namespace = _model->GetName();
-    std::cout << "Loading RealSensePlugin with namespace " << camera_namespace << std::endl;
+    std::cout << "Loading OakPlugin with namespace " << camera_namespace << std::endl;
 
     // Store a pointer to the world
-    this->world = this->rsModel->GetWorld();
+    this->world = this->oakModel->GetWorld();
 
     // Sensors Manager
     sensors::SensorManager* smanager = sensors::SensorManager::Instance();
 
     std::string camera_name = "rgbd";
     if (!_sdf->HasElement("camera_name")) {
-      ROS_INFO_NAMED("realsense", "realsense plugin missing <camera_name>, defaults to \"%s\"", camera_name.c_str());
+      ROS_INFO_NAMED("oak", "oak plugin missing <camera_name>, defaults to \"%s\"", camera_name.c_str());
     } else {
       camera_name = _sdf->Get<std::string>("camera_name");
     }
 
     std::string camera_suffix = "";
     if (!_sdf->HasElement("camera_suffix")) {
-      ROS_INFO_NAMED("realsense", "realsense plugin missing <camera_suffix>, defaults to \"%s\"", camera_suffix.c_str());
+      ROS_INFO_NAMED("oak", "oak plugin missing <camera_suffix>, defaults to \"%s\"", camera_suffix.c_str());
     } else {
       camera_suffix = _sdf->Get<std::string>("camera_suffix");
     }
@@ -162,15 +162,15 @@ public:
 
     // Check if camera renderers have been found successfuly
     if (!depthPtr) {
-      gzerr << "RealSensePlugin: Depth Camera with name \"" << depth_camera_plugin_name_ << "\" has not been found" << std::endl;
+      gzerr << "OakPlugin: Depth Camera with name \"" << depth_camera_plugin_name_ << "\" has not been found" << std::endl;
       return;
     }
     if (!colorPtr) {
-      gzerr << "RealSensePlugin: Color Camera with name \"" << color_camera_plugin_name_ << "\" has not been found" << std::endl;
+      gzerr << "OakPlugin: Color Camera with name \"" << color_camera_plugin_name_ << "\" has not been found" << std::endl;
       return;
     }
     if (!iredsPtr) {
-      gzerr << "RealSensePlugin: InfraRed Stereo Camera with name \"" << ireds_camera_plugin_name_ << "\" has not been found" << std::endl;
+      gzerr << "OakPlugin: InfraRed Stereo Camera with name \"" << ireds_camera_plugin_name_ << "\" has not been found" << std::endl;
       return;
     }
 
@@ -220,7 +220,7 @@ public:
       this->depthMap.resize(this->scaling * this->depthCam->ImageWidth() * this->scaling * this->depthCam->ImageHeight());
     }
     catch (std::bad_alloc& e) {
-      gzerr << "RealSensePlugin: depthMap allocation failed: " << e.what() << std::endl;
+      gzerr << "OakPlugin: depthMap allocation failed: " << e.what() << std::endl;
       return;
     }
 
@@ -229,38 +229,38 @@ public:
     this->transportNode->Init(this->world->Name());
 
     if (!_sdf->HasElement("camera_name")) {
-      gzwarn << "RealSensePlugin: cannot load the camera_name parameter" << std::endl;
+      gzwarn << "OakPlugin: cannot load the camera_name parameter" << std::endl;
     } else {
       camera_name = _sdf->Get<std::string>("camera_name");
     }
 
     if (!_sdf->HasElement("camera_suffix")) {
-      gzwarn << "RealSensePlugin: cannot load the camera_suffix parameter" << std::endl;
+      gzwarn << "OakPlugin: cannot load the camera_suffix parameter" << std::endl;
     } else {
       camera_suffix = _sdf->Get<std::string>("camera_suffix");
     }
 
     // Setup Publishers
-    std::string rsTopicRoot =
+    std::string oakTopicRoot =
         /* "~/rs_d435/"; */
-        "~/" + this->rsModel->GetName() + "/rs/stream/";
+        "~/" + this->oakModel->GetName() + "/rs/stream/";
 
-    /* this->depthPub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + rs_prefix + "/" + DEPTH_CAMERA_TOPIC, 1, DEPTH_PUB_FREQ_HZ); */
-    /* this->ired1Pub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + rs_prefix + "/" + IRED1_CAMERA_TOPIC, 1, IRED1_PUB_FREQ_HZ); */
-    /* this->ired2Pub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + rs_prefix + "/" + IRED2_CAMERA_TOPIC, 1, IRED2_PUB_FREQ_HZ); */
-    /* this->colorPub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + rs_prefix + "/" + COLOR_CAMERA_TOPIC, 1, COLOR_PUB_FREQ_HZ); */
+    /* this->depthPub = this->transportNode->Advertise<msgs::ImageStamped>(oakTopicRoot + "/" + rs_prefix + "/" + DEPTH_CAMERA_TOPIC, 1, DEPTH_PUB_FREQ_HZ); */
+    /* this->ired1Pub = this->transportNode->Advertise<msgs::ImageStamped>(oakTopicRoot + "/" + rs_prefix + "/" + IRED1_CAMERA_TOPIC, 1, IRED1_PUB_FREQ_HZ); */
+    /* this->ired2Pub = this->transportNode->Advertise<msgs::ImageStamped>(oakTopicRoot + "/" + rs_prefix + "/" + IRED2_CAMERA_TOPIC, 1, IRED2_PUB_FREQ_HZ); */
+    /* this->colorPub = this->transportNode->Advertise<msgs::ImageStamped>(oakTopicRoot + "/" + rs_prefix + "/" + COLOR_CAMERA_TOPIC, 1, COLOR_PUB_FREQ_HZ); */
 
-    this->depthPub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + DEPTH_CAMERA_TOPIC, 1, DEPTH_PUB_FREQ_HZ);
-    this->ired1Pub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + IRED1_CAMERA_TOPIC, 1, IRED1_PUB_FREQ_HZ);
-    this->ired2Pub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + IRED2_CAMERA_TOPIC, 1, IRED2_PUB_FREQ_HZ);
-    this->colorPub = this->transportNode->Advertise<msgs::ImageStamped>(rsTopicRoot + "/" + COLOR_CAMERA_TOPIC, 1, COLOR_PUB_FREQ_HZ);
+    this->depthPub = this->transportNode->Advertise<msgs::ImageStamped>(oakTopicRoot + "/" + DEPTH_CAMERA_TOPIC, 1, DEPTH_PUB_FREQ_HZ);
+    this->ired1Pub = this->transportNode->Advertise<msgs::ImageStamped>(oakTopicRoot + "/" + IRED1_CAMERA_TOPIC, 1, IRED1_PUB_FREQ_HZ);
+    this->ired2Pub = this->transportNode->Advertise<msgs::ImageStamped>(oakTopicRoot + "/" + IRED2_CAMERA_TOPIC, 1, IRED2_PUB_FREQ_HZ);
+    this->colorPub = this->transportNode->Advertise<msgs::ImageStamped>(oakTopicRoot + "/" + COLOR_CAMERA_TOPIC, 1, COLOR_PUB_FREQ_HZ);
 
     // Listen to depth camera new frame event
     if (this->useRealistic) {
       this->newDepthFrameConn =
-          this->depthCam->ConnectNewDepthFrame(std::bind(&RealSensePlugin::OnNewDepthFrameRealistic, this, this->depthCam, this->depthPub));
+          this->depthCam->ConnectNewDepthFrame(std::bind(&OakPlugin::OnNewDepthFrameRealistic, this, this->depthCam, this->depthPub));
     } else {
-      this->newDepthFrameConn = this->depthCam->ConnectNewDepthFrame(std::bind(&RealSensePlugin::OnNewDepthFrame, this, this->depthCam, this->depthPub));
+      this->newDepthFrameConn = this->depthCam->ConnectNewDepthFrame(std::bind(&OakPlugin::OnNewDepthFrame, this, this->depthCam, this->depthPub));
     }
 
     // Setup infrared stereo camera
@@ -270,19 +270,19 @@ public:
       std::string cameraName = this->iredStereoCam->Camera(i)->Name();
       if (cameraName.find(ired1_camera_plugin_name_) != std::string::npos) {
         std::cout << "ired1 found" << std::endl;
-        this->newIred1FrameConn = this->iredCams[i]->ConnectNewImageFrame(std::bind(&RealSensePlugin::OnNewFrame, this, this->iredCams[i], this->ired1Pub));
+        this->newIred1FrameConn = this->iredCams[i]->ConnectNewImageFrame(std::bind(&OakPlugin::OnNewFrame, this, this->iredCams[i], this->ired1Pub));
       } else if (cameraName.find(ired2_camera_plugin_name_) != std::string::npos) {
         std::cout << "ired2 found" << std::endl;
-        this->newIred2FrameConn = this->iredCams[i]->ConnectNewImageFrame(std::bind(&RealSensePlugin::OnNewFrame, this, this->iredCams[i], this->ired2Pub));
+        this->newIred2FrameConn = this->iredCams[i]->ConnectNewImageFrame(std::bind(&OakPlugin::OnNewFrame, this, this->iredCams[i], this->ired2Pub));
       }
     }
 
     this->iredStereoCam->SetActive(true);
 
-    this->newColorFrameConn = this->colorCam->ConnectNewImageFrame(std::bind(&RealSensePlugin::OnNewFrame, this, this->colorCam, this->colorPub));
+    this->newColorFrameConn = this->colorCam->ConnectNewImageFrame(std::bind(&OakPlugin::OnNewFrame, this, this->colorCam, this->colorPub));
 
     // Listen to the update event
-    this->updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&RealSensePlugin::OnUpdate, this));
+    this->updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&OakPlugin::OnUpdate, this));
   }
 
   //}
@@ -306,7 +306,7 @@ public:
     msg.mutable_image()->set_step(cam->ImageWidth() * cam->ImageDepth());
     msg.mutable_image()->set_data(cam->ImageData(), cam->ImageDepth() * cam->ImageWidth() * cam->ImageHeight());
 
-    // Publish realsense infrared stream
+    // Publish oak infrared stream
     pub->Publish(msg);
   }
   //}
@@ -322,7 +322,7 @@ public:
     // Instantiate message
     msgs::ImageStamped msg;
 
-    // Convert Float depth data to RealSense depth data
+    // Convert Float depth data to oak depth data
     const float* depthDataFloat = this->depthCam->DepthData();
     for (unsigned int i = 0; i < imageSize; ++i) {
       const float cur_depth = depthDataFloat[i];
@@ -334,7 +334,7 @@ public:
       }
     }
 
-    // Pack realsense scaled depth map
+    // Pack oak scaled depth map
     msgs::Set(msg.mutable_time(), this->world->SimTime());
     msg.mutable_image()->set_width(imageWidth);
     msg.mutable_image()->set_height(imageHeight);
@@ -342,7 +342,7 @@ public:
     msg.mutable_image()->set_step(imageWidth * imageHeight);
     msg.mutable_image()->set_data(this->depthMap.data(), sizeof(uint16_t) * imageSize);
 
-    // Publish realsense scaled depth map
+    // Publish oak scaled depth map
     pub->Publish(msg);
   }
   //}
@@ -362,7 +362,7 @@ public:
     // Instantiate message
     msgs::ImageStamped msg;
 
-    // Convert Float depth data to RealSense depth data
+    // Convert Float depth data to oak depth data
     const float* depthDataFloat = this->depthCam->DepthData();
     unsigned     x = 0, y = 0;
     for (unsigned int i = 0; i < imageSize; ++i) {
@@ -417,7 +417,7 @@ public:
     /* cv::resize(im, im, cv::Size(n_width, n_height), cv::INTER_NEAREST); */
     memcpy(this->depthMap.data(), im.ptr(0), sizeof(uint16_t) * n_imsize);
 
-    // Pack realsense scaled depth map
+    // Pack oak scaled depth map
     msgs::Set(msg.mutable_time(), this->world->SimTime());
     msg.mutable_image()->set_width(n_width);
     msg.mutable_image()->set_height(n_height);
@@ -425,7 +425,7 @@ public:
     msg.mutable_image()->set_step(n_width * n_height);
     msg.mutable_image()->set_data(this->depthMap.data(), sizeof(uint16_t) * n_imsize);
 
-    // Publish realsense scaled depth map
+    // Publish oak scaled depth map
     pub->Publish(msg);
   }
 
@@ -459,7 +459,7 @@ protected:
   std::normal_distribution<float> randn_dist;
 
   /// \brief Pointer to the model containing the plugin.
-  physics::ModelPtr rsModel;
+  physics::ModelPtr oakModel;
 
   /// \brief Pointer to the world.
   physics::WorldPtr world;
@@ -516,20 +516,20 @@ protected:
 //}
 
 /// \brief A plugin that simulates Real Sense camera streams.
-/* class GazeboRosRealsense : public RealSensePlugin //{ */
+/* class GazeboRosOak : public OakPlugin //{ */
 
-class GazeboRosRealsense : public RealSensePlugin {
+class GazeboRosOak : public OakPlugin {
 public:
   /////////////////////////////////////////////////
-  /* GazeboRosRealsense() constructor //{ */
-  GazeboRosRealsense() {
+  /* GazeboRosOak() constructor //{ */
+  GazeboRosOak() {
   }
   //}
 
   /////////////////////////////////////////////////
-  /* ~GazeboRosRealsense() destructor //{ */
-  ~GazeboRosRealsense() {
-    ROS_DEBUG_STREAM_NAMED("realsense_camera", "Unloaded");
+  /* ~GazeboRosOak() destructor //{ */
+  ~GazeboRosOak() {
+    ROS_DEBUG_STREAM_NAMED("oak_camera", "Unloaded");
   }
   //}
 
@@ -544,26 +544,26 @@ public:
                        << "Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
       return;
     }
-    ROS_INFO("Realsense Gazebo ROS plugin loading...");
-    RealSensePlugin::Load(_model, _sdf);
+    ROS_INFO("Oak Gazebo ROS plugin loading...");
+    OakPlugin::Load(_model, _sdf);
 
     cameraNamespace = _model->GetName();
-    ROS_INFO_STREAM("Realsense camera attached to " << cameraNamespace);
+    ROS_INFO_STREAM("Oak camera attached to " << cameraNamespace);
 
     if (!_sdf->HasElement("camera_name")) {
-      ROS_INFO_NAMED("realsense", "realsense plugin missing <camera_name>, defaults to \"\"");
-      this->realsense_namespace_ = "";
+      ROS_INFO_NAMED("oak", "oak plugin missing <camera_name>, defaults to \"\"");
+      this->oak_namespace_ = "";
     } else {
-      this->realsense_namespace_ = _sdf->Get<std::string>("camera_name");
-      camera_name_               = this->realsense_namespace_;
+      this->oak_namespace_ = _sdf->Get<std::string>("camera_name");
+      camera_name_               = this->oak_namespace_;
     }
 
     if (!_sdf->HasElement("camera_suffix")) {
-      ROS_INFO_NAMED("realsense", "realsense plugin missing <camera_suffix>, defaults to \"\"");
-      this->realsense_namespace_ = "";
+      ROS_INFO_NAMED("oak", "oak plugin missing <camera_suffix>, defaults to \"\"");
+      this->oak_namespace_ = "";
     } else {
-      this->realsense_namespace_ = _sdf->Get<std::string>("camera_suffix");
-      camera_suffix_             = this->realsense_namespace_;
+      this->oak_namespace_ = _sdf->Get<std::string>("camera_suffix");
+      camera_suffix_             = this->oak_namespace_;
     }
 
     depth_camera_frame_id_ = cameraNamespace + "/" + camera_name_ + camera_suffix_ + "/" + DEPTH_CAMERA_SUFFIX;
@@ -579,43 +579,43 @@ public:
 
     // Get parameters from sdf
     if (!_sdf->HasElement("parentFrameName")) {
-      ROS_INFO_NAMED("realsense", "realsense plugin missing <parentFrameName>, defaults to \"world\"");
+      ROS_INFO_NAMED("oak", "oak plugin missing <parentFrameName>, defaults to \"world\"");
       this->parent_frame_name_ = "world";
     } else
       this->parent_frame_name_ = _sdf->Get<std::string>("parentFrameName");
 
     if (!_sdf->HasElement("x")) {
-      ROS_INFO_NAMED("realsense", "realsense plugin missing <x>, defaults to 0");
+      ROS_INFO_NAMED("oak", "oak plugin missing <x>, defaults to 0");
       this->x_ = 0;
     } else
       this->x_ = _sdf->Get<double>("x");
 
     if (!_sdf->HasElement("y")) {
-      ROS_INFO_NAMED("realsense", "realsense plugin missing <y>, defaults to 0");
+      ROS_INFO_NAMED("oak", "oak plugin missing <y>, defaults to 0");
       this->y_ = 0;
     } else
       this->y_ = _sdf->Get<double>("y");
 
     if (!_sdf->HasElement("z")) {
-      ROS_INFO_NAMED("realsense", "realsense plugin missing <z>, defaults to 0");
+      ROS_INFO_NAMED("oak", "oak plugin missing <z>, defaults to 0");
       this->z_ = 0;
     } else
       this->z_ = _sdf->Get<double>("z");
 
     if (!_sdf->HasElement("roll")) {
-      ROS_INFO_NAMED("realsense", "realsense plugin missing <roll>, defaults to 0");
+      ROS_INFO_NAMED("oak", "oak plugin missing <roll>, defaults to 0");
       this->roll_ = 0;
     } else
       this->roll_ = _sdf->Get<double>("roll");
 
     if (!_sdf->HasElement("pitch")) {
-      ROS_INFO_NAMED("realsense", "realsense plugin missing <pitch>, defaults to 0");
+      ROS_INFO_NAMED("oak", "oak plugin missing <pitch>, defaults to 0");
       this->pitch_ = 0;
     } else
       this->pitch_ = _sdf->Get<double>("pitch");
 
     if (!_sdf->HasElement("yaw")) {
-      ROS_INFO_NAMED("realsense", "realsense plugin missing <yaw>, defaults to 0");
+      ROS_INFO_NAMED("oak", "oak plugin missing <yaw>, defaults to 0");
       this->yaw_ = 0;
     } else
       this->yaw_ = _sdf->Get<double>("yaw");
@@ -628,15 +628,15 @@ public:
 
     this->itnode_ = std::make_unique<image_transport::ImageTransport>(this->rosnode_);
 
-    this->color_pub_ = this->itnode_->advertiseCamera("color/image_raw", 2);
+    this->color_pub_ = this->itnode_->advertiseCamera("rgb/image_raw", 2);
     this->ir1_pub_   = this->itnode_->advertiseCamera("infra1/image_raw", 2);
     this->ir2_pub_   = this->itnode_->advertiseCamera("infra2/image_raw", 2);
-    this->depth_pub_ = this->itnode_->advertiseCamera("aligned_depth_to_color/image_raw", 2);
+    this->depth_pub_ = this->itnode_->advertiseCamera("stereo/image_raw", 2);
 
     this->tf_pub_ = this->rosnode_.advertise<tf2_msgs::TFMessage>("/tf_gazebo_static", 100, true);
 
     createStaticTransforms();
-    this->timer_ = this->rosnode_.createWallTimer(ros::WallDuration(1.0), &GazeboRosRealsense::publishStaticTransforms, this);
+    this->timer_ = this->rosnode_.createWallTimer(ros::WallDuration(1.0), &GazeboRosOak::publishStaticTransforms, this);
   }
 
   //}
@@ -783,7 +783,7 @@ public:
       camera_id = depth_camera_optical_frame_id_;
       image_pub = &(this->depth_pub_);
     } else {
-      ROS_ERROR("[GazeboRosrealsense]: Unknown camera name: %s\n", camera_id.c_str());
+      ROS_ERROR("[GazeboRosoak]: Unknown camera name: %s\n", camera_id.c_str());
       camera_id = color_camera_optical_frame_id_;
       image_pub = &(this->color_pub_);
     }
@@ -821,7 +821,7 @@ public:
     // get current time
     common::Time current_time = this->world->SimTime();
 
-    RealSensePlugin::OnNewDepthFrame(cam, pub);
+    OakPlugin::OnNewDepthFrame(cam, pub);
 
     // copy data into image
     this->depth_msg_.header.frame_id   = depth_camera_optical_frame_id_;
@@ -848,7 +848,7 @@ public:
     // get current time
     common::Time current_time = this->world->SimTime();
 
-    RealSensePlugin::OnNewDepthFrameRealistic(cam, pub);
+    OakPlugin::OnNewDepthFrameRealistic(cam, pub);
 
     // copy data into image
     this->depth_msg_.header.frame_id   = depth_camera_optical_frame_id_;
@@ -929,7 +929,7 @@ protected:
   sensor_msgs::Image image_msg_, depth_msg_;
   int                namespace_, frame_id_;
 
-  std::string realsense_namespace_;
+  std::string oak_namespace_;
   /// \brief frame transform parameters
   std::string parent_frame_name_;
   double      x_, y_, z_, roll_, pitch_, yaw_;
@@ -949,5 +949,5 @@ protected:
 //}
 
 // Register the plugin
-GZ_REGISTER_MODEL_PLUGIN(GazeboRosRealsense)
+GZ_REGISTER_MODEL_PLUGIN(GazeboRosOak)
 }  // namespace gazebo

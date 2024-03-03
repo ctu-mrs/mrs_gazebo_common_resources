@@ -54,9 +54,9 @@
 // #define COLOR_CAMERA_TOPIC "color"
 #define IRED_CAMERA_TOPIC "infra"
 // #define IRED2_CAMERA_TOPIC "infra2"
-#define DEPTH_PUB_FREQ_HZ 60
+#define DEPTH_PUB_FREQ_HZ 5
 // #define COLOR_PUB_FREQ_HZ 30
-#define IRED_PUB_FREQ_HZ 60
+#define IRED_PUB_FREQ_HZ 5
 // #define IRED2_PUB_FREQ_HZ 60
 
 #define DEPTH_SCALE_M 0.001
@@ -648,7 +648,7 @@ public:
     // this->ir1_pub_   = this->itnode_->advertiseCamera("infra1/image_raw", 2);
     // this->ir2_pub_   = this->itnode_->advertiseCamera("infra2/image_raw", 2);
     this->ired_pub_ = this->itnode_->advertiseCamera("infra/image_raw", 2);
-    this->depth_pub_ = this->itnode_->advertiseCamera("tof_depth/image_raw", 2);
+    this->depth_pub_ = this->itnode_->advertiseCamera("image_raw", 2);
 
     this->tf_pub_ = this->rosnode_.advertise<tf2_msgs::TFMessage>("/tf_gazebo_static", 100, true);
 
