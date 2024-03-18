@@ -31,6 +31,12 @@ public:
 
     std::string parentLinkName;
     std::string childLinkName;
+    std::string robotNamespace;
+
+    robotNamespace = "/";
+    if (_sdf->HasElement("robotNamespace")) {
+        robotNamespace = _sdf->GetElement("robotNamespace")->Get<std::string>();
+    }
 
     if (_sdf->HasElement("parentLink")) {
       parentLinkName = _sdf->Get<std::string>("parentLink");
@@ -64,8 +70,8 @@ public:
     // Publish the transform
     geometry_msgs::TransformStamped transformStamped;
     transformStamped.header.stamp            = ros::Time::now();
-    transformStamped.header.frame_id         = parentLinkName;
-    transformStamped.child_frame_id          = childLinkName;
+    transformStamped.header.frame_id         = robotNamespace + parentLinkName.erase(parentLinkName.find("_link"), std::string("_link").length());
+    transformStamped.child_frame_id          = robotNamespace + childLinkName.erase(childLinkName.find("_link"), std::string("_link").length());
     transformStamped.transform.translation.x = relativePose.Pos().X();
     transformStamped.transform.translation.y = relativePose.Pos().Y();
     transformStamped.transform.translation.z = relativePose.Pos().Z();
@@ -74,7 +80,7 @@ public:
     transformStamped.transform.rotation.y    = relativePose.Rot().Y();
     transformStamped.transform.rotation.z    = relativePose.Rot().Z();
     tf_broadcaster.sendTransform(transformStamped);
-    ROS_INFO_STREAM("[LinkStaticTFPublisher]: Published static TF between frames \"" << parentLinkName << "\", \"" << childLinkName << "\"");
+    ROS_INFO_STREAM("[LinkStaticTFPublisher]: Published static TF between frames \"" << robotNamespace << parentLinkName << "\", \""  << robotNamespace << childLinkName << "\"");
   }
 };
 
