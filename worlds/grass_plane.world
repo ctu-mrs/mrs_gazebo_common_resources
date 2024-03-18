@@ -79,11 +79,14 @@
             </plane>
           </geometry>
           <surface>
-            <friction>
+            <contact>
               <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
+                <min_depth>0.01</min_depth>
+                <max_vel>0.0</max_vel>
               </ode>
+            </contact>
+            <friction>
+              <ode/>
             </friction>
           </surface>
         </collision>

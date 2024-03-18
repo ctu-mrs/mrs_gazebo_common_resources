@@ -101,6 +101,7 @@ set(LIBRARIES
   MrsGazeboCommonResources_FluidResistancePlugin
   MrsGazeboCommonResources_MotorSpeedRepublisherPlugin
   MrsGazeboCommonResources_MotorPropModelPlugin
+  MrsGazeboCommonResources_LinkStaticTFPublisher
   )
 
 catkin_package(
@@ -394,6 +395,18 @@ add_library(MrsGazeboCommonResources_MotorPropModelPlugin SHARED
   )
 
 target_link_libraries(MrsGazeboCommonResources_MotorPropModelPlugin
+  ${GAZEBO_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  )
+
+# LinkStaticTFPublisher
+
+add_library(MrsGazeboCommonResources_LinkStaticTFPublisher SHARED
+  src/sensor_and_model_plugins/link_static_tf_publisher.cpp
+  )
+
+target_link_libraries(MrsGazeboCommonResources_LinkStaticTFPublisher
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
