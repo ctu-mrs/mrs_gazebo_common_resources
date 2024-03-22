@@ -222,23 +222,12 @@ void FluidResistancePlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf
 /* OnUpdate() //{ */
 // Called by the world update start event
 void FluidResistancePlugin::OnUpdate() {
-  float period = 1.0 / rate;
-
-  // Get simulator time
-#if (GAZEBO_MAJOR_VERSION >= 8)
-  float current_time = world->SimTime().Float();
-#else
-  float current_time = world->GetSimTime().Float();
-#endif
-  float dt = current_time - last_time;
-
-  if (dt <= period) {
-    ROS_DEBUG("[FluidResistancePlugin]: >>>>>>>>>>TimePassed = %f, TimePeriod =%f ", dt, period);
-    return;
-  } else {
-    last_time = current_time;
+    // The previous method has an issue that the update rate is set by xacro file and the physics engine update rate is different.
+    // Every time the physics engine computes its forces, it needs to be given these forces on every update cycle. A force that
+    // was applied on the previous update cycle is not automatically applied on the next update cycle. This is why the force needs
+    // to be applied on every update cycle. The update cycle can be synced with the physics engine by using the OnUpdate method.
+    // Found by Parakh and detailed at https://answers.ros.org/question/12521/applying-wrench-to-object-and-update-rate-of-gazebo_ros_force-plugin/
     ApplyResistance();
-  }
 }
 //}
 
