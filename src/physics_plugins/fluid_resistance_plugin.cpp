@@ -252,10 +252,6 @@ void FluidResistancePlugin::ApplyResistance() {
   math::Vector3 force, torque;
 #endif
 
-  if (verbose) {
-    ROS_WARN("[FluidResistancePlugin]: LinearSpeed = [%f,%f,%f] ", now_lin_vel.X(), now_lin_vel.Y(), now_lin_vel.Z());
-  }
-
   force.X(-1.0 * (res_x * model_mass) * now_lin_vel.X());
   force.Y(-1.0 * (res_y * model_mass) * now_lin_vel.Y());
   force.Z(-1.0 * (res_z * model_mass) * now_lin_vel.Z());
@@ -267,9 +263,6 @@ void FluidResistancePlugin::ApplyResistance() {
 #else
   link_to_apply_resistance->AddRelativeTorque(torque - link_to_apply_resistance->GetInertial()->GetCoG().Cross(force));
 #endif
-  if (verbose) {
-    ROS_WARN("[FluidResistancePlugin]: FluidResistanceApplying = [%f,%f,%f] ", force.X(), force.Y(), force.Z());
-  }
 }
 //}
 
