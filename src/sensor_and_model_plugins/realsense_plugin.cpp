@@ -15,6 +15,7 @@
 */
 
 #include <gazebo/common/Plugin.hh>
+#include <gazebo/msgs/msgs.hh>
 #include <gazebo/common/common.hh>
 #include <gazebo/physics/PhysicsTypes.hh>
 #include <gazebo/physics/physics.hh>
@@ -32,6 +33,7 @@
 #include <algorithm>
 
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/opencv.hpp>
 
 #include <ros/ros.h>
 #include <sensor_msgs/CameraInfo.h>
@@ -47,8 +49,8 @@
 #include <camera_info_manager/camera_info_manager.h>
 #include <tf2_msgs/TFMessage.h>
 
-#include "perlin_noise.h"
 #include "common.h"
+
 
 #define DEPTH_CAMERA_TOPIC "aligned_depth_to_color"
 #define COLOR_CAMERA_TOPIC "color"
@@ -60,6 +62,7 @@
 #define IRED2_PUB_FREQ_HZ 60
 
 #define DEPTH_SCALE_M 0.001
+#define SCALED_UINT16_MAX (DEPTH_SCALE_M * UINT16_MAX)
 
 namespace gazebo
 {
@@ -76,7 +79,9 @@ const std::string BASE_FRAME_SUFFIX   = "link";
 
 class RealSensePlugin : public ModelPlugin {
 
+
   /* dm_upscale() method //{ */
+  // It runs slower than cv::resize
   void dm_upscale(const cv::Mat& in, cv::Mat& out, int scale) {
 
     const unsigned i_rows = in.rows;
@@ -87,17 +92,6 @@ class RealSensePlugin : public ModelPlugin {
     cv::Mat         ret        = cv::Mat(int(o_rows), int(o_cols), CV_16UC1);
     const uint16_t* i_data_ptr = in.ptr<uint16_t>(0);
 
-    /* uint16_t* o_data_ptr = ret.ptr<uint16_t>(0); */
-    /* cv::parallel_for_(cv::Range(0, o_rows*o_cols), [&](const cv::Range& range) */
-    /* { */
-    /*     for (int r = range.start; r < range.end; r++) */
-    /*     { */
-    /*         const int rit = r / o_cols; */
-    /*         const int cit = r - rit*o_cols; */
-    /*         o_data_ptr[r] = i_data_ptr[cit/scale + rit/scale*i_cols]; */
-    /*     } */
-    /* }); */
-
     uint16_t* o_px_ptr = ret.ptr<uint16_t>(0);
     for (unsigned rit = 0; rit < o_rows; rit++) {
       for (unsigned cit = 0; cit < o_cols; cit++) {
@@ -107,8 +101,9 @@ class RealSensePlugin : public ModelPlugin {
     }
     out = ret;
   }
+  
   //}
-
+  
 public:
   /////////////////////////////////////////////////
   /* RealSensePlugin() constructor //{ */
@@ -180,34 +175,68 @@ public:
 
     /* std::cout << "number of attributes: " << _sdf->GetAttributeCount() << ", " << _model->GetSDF()->GetAttributeCount() << std::endl; */
     /* std::cout << "useRealistic loaded: " << getSdfParam(_sdf, "useRealistic", this->useRealistic, false) << std::endl; */
-    getSdfParam(_sdf, "useRealistic", this->useRealistic, false);
 
+    // Parameters defined in sdf.jinja file in mrs_uav_gazebo_simulation
+    getSdfParam(_sdf, "useRealistic", this->useRealistic, false);
     if (this->useRealistic) {
       std::cout << "Using realistic depth sensor" << std::endl;
-      getSdfParam(_sdf, "imageScaling", this->scaling, 4u);
-      if (this->scaling % 2 && this->scaling != 1) {
-        gzerr << "Invalid scaling " << this->scaling << ". Scaling has to be divisible by two (or be one)." << std::endl;
+      getSdfParam(_sdf, "imageScaling", this->scaling, 2u);
+      if (this->scaling < 1) {
+        gzerr << "Invalid scaling " << this->scaling << ". Scaling has to be integer larger >= 1." << std::endl;
         return;
       }
 
-      getSdfParam(_sdf, "noisePerMeter", this->noisePerMeter, 0.2f);
-      getSdfParam(_sdf, "noiseMinDistance", this->noiseMinDistance, 4.0f);
-      getSdfParam(_sdf, "perlinEmptySpeed", this->perlinEmptySpeed, 0.1f);
-      getSdfParam(_sdf, "perlinEmptyThreshold", this->perlinEmptyThreshold, 0.8f);
-      getSdfParam(_sdf, "blurSize", this->blurSize, 15u);
-      if (this->blurSize % 2 == 0 && this->blurSize != 0) {
-        gzwarn << "Invalid blur size " << this->blurSize << ". Gaussian blur has to be indivisible by two (or zero to turn off). Changing to default (15)"
+      getSdfParam(_sdf, "minDisparitySGM", this->minDisparity, 1u);
+      if (this->minDisparity < 0) {
+        gzwarn << "Invalid minimal disparity " << this->minDisparity << ". Cannot be negative. Changing to default (1)"
                << std::endl;
-        this->blurSize = 15u;
+        this->minDisparity = 1u;
       }
-      getSdfParam(_sdf, "erosionSize", this->erosionSize, 5u);
+      getSdfParam(_sdf, "numDisparitiesSGM", this->numDisparities, 16u);
+      if (this->numDisparities % 16 || this->numDisparities < 16) {
+        gzerr << "Invalid number of disparities " << this->numDisparities << ". Number of disparities has to be divisible by sixteen and be positive." << std::endl;
+        return;
+      }
 
+      // This value is in millimeters, e.g 12000 == 12 metres
+      getSdfParam(_sdf, "depthSaturation", this->depthSaturation, 12000u);
+      if (this->depthSaturation < 0 || this->depthSaturation > UINT16_MAX) {
+        gzwarn << "Invalid depth saturation value" << this->depthSaturation << ". Has to be storeable in UINT16. Changing to default (12000)"
+               << std::endl;
+        this->depthSaturation = 12000u;
+      }
+      this->depthSaturationScaled = this->depthSaturation / DEPTH_SCALE_M;
 
-      unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-      rand_gen      = std::default_random_engine(seed);
-      /* rand_dist = std::uniform_int_distribution<unsigned int>(0, std::numeric_limits<unsigned int>::max()); */
-      randn_dist  = std::normal_distribution<float>(0.0f, noisePerMeter / 3);
-      perlinNoise = PerlinNoise(seed);
+      getSdfParam(_sdf, "blockSizeSGM", this->blockSize, 3u);
+      if (this->blockSize % 2 == 0 || this->blockSize < 0) {
+        gzwarn << "Invalid block size" << this->blockSize << ". Has to be an odd number >= 1. Changing to default (3)"
+               << std::endl;
+        this->blockSize = 3u;
+      }
+
+      getSdfParam(_sdf, "backgroundNoise", this->backgroundNoise, 1.0);
+      if (this->backgroundNoise < 0 || this->backgroundNoise > 1) {
+        gzwarn << "Invalid background noise value" << this->backgroundNoise << ". Has to be in interval min <0;1> max. Changing to default (1)"
+               << std::endl;
+        this->backgroundNoise = 1.0;
+      }
+
+      getSdfParam(_sdf, "randomNoise", this->randomNoiseScale, 1u);
+      if (this->randomNoiseScale > 127) {
+        gzwarn << "Invalid background noise value" << this->randomNoiseScale << ". Has to be in interval min <0;127> max. Changing to default (0)"
+               << std::endl;
+        this->randomNoiseScale = 0u;
+      }
+
+      getSdfParam(_sdf, "defectKernelSize", this->defectKernelSize, 5u);
+      if (this->defectKernelSize % 2 == 0 && this->defectKernelSize != 0) {
+        gzwarn << "Invalid defect kernel size " << this->defectKernelSize << ". Has to be an odd number >= 1. Changing to default (5)"
+               << std::endl;
+        this->defectKernelSize = 5u;
+      }
+      this->erosion_element_1 = cv::getStructuringElement(cv::MORPH_DILATE, cv::Size(this->defectKernelSize, this->defectKernelSize));
+      this->erosion_element_2 = cv::getStructuringElement(cv::MORPH_OPEN, cv::Size(this->defectKernelSize, this->defectKernelSize));
+
     } else {
       std::cout << "Using ideal depth sensor" << std::endl;
       this->scaling = 1;
@@ -324,10 +353,14 @@ public:
 
     // Convert Float depth data to RealSense depth data
     const float* depthDataFloat = this->depthCam->DepthData();
+
     for (unsigned int i = 0; i < imageSize; ++i) {
       const float cur_depth = depthDataFloat[i];
       // Check clipping and overflow
-      if (cur_depth <= this->depthCam->NearClip() || cur_depth >= this->depthCam->FarClip() || cur_depth > DEPTH_SCALE_M * UINT16_MAX || cur_depth < 0) {
+      if (cur_depth <= this->depthCam->NearClip() ||
+          cur_depth >= this->depthCam->FarClip() ||
+          cur_depth > SCALED_UINT16_MAX ||
+          cur_depth < 0) {
         this->depthMap[i] = 0;
       } else {
         this->depthMap[i] = (cur_depth) / DEPTH_SCALE_M;
@@ -347,88 +380,92 @@ public:
   }
   //}
 
+
   /////////////////////////////////////////////////
   /* OnNewDepthFrameRealistic() method //{ */
   virtual void OnNewDepthFrameRealistic([[maybe_unused]] const rendering::CameraPtr cam, const transport::PublisherPtr pub) {
-    // Get Depth Map dimensions
-    const unsigned imageWidth  = this->depthCam->ImageWidth();
-    const unsigned imageHeight = this->depthCam->ImageHeight();
-    const unsigned imageSize   = imageWidth * imageHeight;
 
-    /* this->perlinNoise = PerlinNoise(rand_dist(rand_gen)); */
-    static float cur_z = 6.0;
-    cur_z += this->perlinEmptySpeed;
-
-    // Instantiate message
     msgs::ImageStamped msg;
 
-    // Convert Float depth data to RealSense depth data
+    const unsigned imageWidth  = this->iredStereoCam->ImageWidth(0);
+    const unsigned imageHeight = this->iredStereoCam->ImageHeight(0);
+
+    // Create workable OpenCV matrices
+    cv::Mat img_R(imageHeight, imageWidth, CV_8UC1, const_cast<uchar*>(this->iredStereoCam->ImageData(0)));
+    cv::Mat img_L(imageHeight, imageWidth, CV_8UC1, const_cast<uchar*>(this->iredStereoCam->ImageData(1)));
+
+    // SGBM instance and its settings
+    cv::Ptr<cv::StereoSGBM> sgbm = cv::StereoSGBM::create(this->minDisparity,
+                                                          this->numDisparities,
+                                                          this->blockSize,
+                                                          8 * this->blockSize * this->blockSize,
+                                                          32 * this->blockSize * this->blockSize);
+    sgbm->setMode(cv::StereoSGBM::MODE_SGBM_3WAY);
+
+    // Compute the disparity map and flip values
+    cv::Mat disparity;
+    sgbm->compute(img_L, img_R, disparity);
+    disparity = UINT8_MAX - disparity;
+    disparity.convertTo(disparity, CV_16UC1);
+
+    // Add random noise
+    cv::Mat noise(int(depthCam->ImageHeight()), int(depthCam->ImageWidth()), CV_16UC1, cv::Scalar(0));
+    cv::randn(noise, this->randomNoiseScale, this->randomNoiseScale);     
+    cv::add(disparity,noise,disparity);
+
+    // Merge disparity data with depthMap data
+    cv::Mat depth_mat(int(depthCam->ImageHeight()), int(depthCam->ImageWidth()), CV_16UC1, cv::Scalar(0));
     const float* depthDataFloat = this->depthCam->DepthData();
-    unsigned     x = 0, y = 0;
-    for (unsigned int i = 0; i < imageSize; ++i) {
 
-      const float x_rel     = 5.0f * float(x) / float(imageWidth);
-      const float y_rel     = 5.0f * float(y) / float(imageHeight);
-      const float cur_depth = depthDataFloat[i];
+    const unsigned L_ignore = numDisparities / 2; // No need to loop through black spaces
+    for( unsigned i = 0; i < imageHeight; ++i){
+      for( unsigned j = L_ignore; j < imageWidth; ++j){
+        
+        const float cur_depth = depthDataFloat[i*imageWidth + j];
 
-      // Check clipping and overflow
-      if (cur_depth <= this->depthCam->NearClip() || cur_depth >= this->depthCam->FarClip() || cur_depth > DEPTH_SCALE_M * UINT16_MAX || cur_depth < 0 ||
-          this->perlinNoise.noise(x_rel, y_rel, cur_z) > this->perlinEmptyThreshold) {
-        this->depthMapSmall[i] = 0;
-      } else {
-        const float noise_scale = cur_depth > this->noiseMinDistance ? cur_depth : this->noiseMinDistance;
-        const float noise       = noise_scale * this->randn_dist(rand_gen);
-        float       noisy_depth = (noise + cur_depth);
-        if (noisy_depth < 0 || noisy_depth > DEPTH_SCALE_M * UINT16_MAX)
-          noisy_depth = 0;
-        this->depthMapSmall[i] = noisy_depth / DEPTH_SCALE_M;
+        if (cur_depth <= this->depthCam->NearClip() || cur_depth >= this->depthCam->FarClip()  || cur_depth > SCALED_UINT16_MAX  || cur_depth < 0){
+          if (std::rand() / RAND_MAX > (1 - this->backgroundNoise)){
+            for(int k = -1; k <= 1; ++k){
+              for(int l = -1; l <= 1; ++l){
+                if ( k + i > 0 && l + j > 0 && k + i < imageHeight - 1 && l + j < imageWidth - 1){
+                  depth_mat.at<uint16_t>(k + i,l + j) = this->depthSaturation;
+                }
+              }
+            }
+          }
+        } else {
+          if ( cur_depth < this->depthSaturationScaled){
+            depth_mat.at<uint16_t>(i,j) = cur_depth * disparity.at<uint16_t>(i,j) * disparity.at<uint16_t>(i,j) / SCALED_UINT16_MAX;
+          } else {
+            depth_mat.at<uint16_t>(i,j) = this->depthSaturation * disparity.at<uint16_t>(i,j) * disparity.at<uint16_t>(i,j) / UINT16_MAX; 
+          }
+        }
       }
-
-      x++;
-
-      if (x > imageWidth) {
-        x = 0;
-        y++;
-      }
+    }
+    
+    //dm_upscale(depth_mat,depth_mat,this->scaling);
+    cv::resize(depth_mat, depth_mat, cv::Size(imageWidth * this->scaling, imageHeight * this->scaling), 0, 0, cv::INTER_LINEAR);
+    
+    // Enhance errors and introduce blur
+    if (this->defectKernelSize) {
+      cv::erode(depth_mat, depth_mat, this->erosion_element_1);
+      cv::erode(depth_mat, depth_mat, this->erosion_element_2);
+      cv::blur(depth_mat, depth_mat, cv::Size(this->defectKernelSize, this->defectKernelSize));
     }
 
-    const unsigned n_width  = depthCam->ImageWidth() * this->scaling;
-    const unsigned n_height = depthCam->ImageHeight() * this->scaling;
-    const unsigned n_imsize = n_width * n_height;
-
-    cv::Mat im(int(depthCam->ImageHeight()), int(depthCam->ImageWidth()), CV_16UC1, this->depthMapSmall.data());
-    dm_upscale(im, im, int(this->scaling));
-
-    if (this->blurSize != 0) {
-      cv::Mat mask, blr_im, blr_mask;
-      cv::compare(im, 0, mask, cv::CMP_NE);
-      cv::GaussianBlur(im, blr_im, cv::Size(this->blurSize, this->blurSize), 2 * this->blurSize);
-      cv::GaussianBlur(mask, blr_mask, cv::Size(this->blurSize, this->blurSize), 2 * this->blurSize);
-      cv::divide(blr_im, blr_mask, blr_im, 255.0, CV_16UC1);
-      blr_im.copyTo(im, mask);
-    }
-
-    if (this->erosionSize != 0) {
-      cv::Mat element = getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(this->erosionSize, this->erosionSize));
-      cv::erode(im, im, element);
-    }
-
-    /* dm_blur(im, im, 2); */
-    /* cv::resize(im, im, cv::Size(n_width, n_height), cv::INTER_NEAREST); */
-    memcpy(this->depthMap.data(), im.ptr(0), sizeof(uint16_t) * n_imsize);
-
+    memcpy(this->depthMap.data(), depth_mat.ptr(0), sizeof(uint16_t) * depth_mat.cols * depth_mat.rows);
+    
     // Pack realsense scaled depth map
     msgs::Set(msg.mutable_time(), this->world->SimTime());
-    msg.mutable_image()->set_width(n_width);
-    msg.mutable_image()->set_height(n_height);
+    msg.mutable_image()->set_width(depth_mat.cols);
+    msg.mutable_image()->set_height(depth_mat.rows);
     msg.mutable_image()->set_pixel_format(common::Image::L_INT16);
-    msg.mutable_image()->set_step(n_width * n_height);
-    msg.mutable_image()->set_data(this->depthMap.data(), sizeof(uint16_t) * n_imsize);
+    msg.mutable_image()->set_step(depth_mat.cols * depth_mat.rows);
+    msg.mutable_image()->set_data(this->depthMap.data(), sizeof(uint16_t) * depth_mat.cols * depth_mat.rows);
 
     // Publish realsense scaled depth map
     pub->Publish(msg);
   }
-
   //}
 
   /////////////////////////////////////////////////
@@ -446,17 +483,19 @@ protected:
 
 protected:
   bool                       useRealistic;
-  unsigned                   scaling = 4;
-  float                      noisePerMeter;
-  float                      noiseMinDistance;
-  float                      perlinEmptySpeed;
-  float                      perlinEmptyThreshold;
-  unsigned                   blurSize;
-  unsigned                   erosionSize;
-  PerlinNoise                perlinNoise;
-  std::default_random_engine rand_gen;
-  /* std::uniform_int_distribution<unsigned int> rand_dist; */
-  std::normal_distribution<float> randn_dist;
+  bool                       useGPU;
+  unsigned                   scaling;
+  unsigned                   depthSaturation;
+  float                      depthSaturationScaled;
+  double                     backgroundNoise;
+  unsigned                   minDisparity;
+  unsigned                   numDisparities;
+  unsigned                   blockSize;
+  unsigned                   defectKernelSize;
+  unsigned                   randomNoiseScale;
+
+  cv::Mat                    erosion_element_1;
+  cv::Mat                    erosion_element_2;
 
   /// \brief Pointer to the model containing the plugin.
   physics::ModelPtr rsModel;

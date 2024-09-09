@@ -149,30 +149,35 @@ Modified version of the official [Realsense Gazebo plugin](https://github.com/in
 ### Description
 - Simulates a Realsense D435 RGB-D camera sensor in Gazebo.
 - The original plugin has been extended to publish tranform message on topic `/tf_gazebo_static`. To make this transformation visible in ROS use our [Static transform republisher plugin](../world_plugins/README.md#static-transform-republisher-plugin) in your `world` definition. 
-- A "realistic" mode with more noise and virtually reduced resolution may be activated using the `useRealistic` flag in the SDF.
-
+- A "realistic" mode with more noise and virtually reduced resolution may be activated using the `useRealistic` flag in the `session.yaml` file.
 
 ### Usage
-After building, activate by adding the following to your robot definition.
+The parameter configuration can be found in [mrs_uav_gazebo_simulation](https://github.com/ctu-mrs/mrs_uav_gazebo_simulation/tree/master).
+If missing, after building, add the following to `generic_components.sdf.jinja`.
 
 ```xml
   ...
-    <plugin name="mrs_gazebo_realsense" filename="libMRSGazeboRealsensePlugin.so">
-      <useRealistic>${enable_realistic_realsense}</useRealistic>
-      <noisePerMeter>0.2</noisePerMeter>
-      <minNoiseDistance>4.0</minNoiseDistance>
-      <perlinEmptyThreshold>0.8</perlinEmptyThreshold>
-      <perlinEmptySpeed>0.2</perlinEmptySpeed>
-      <imageScaling>4</imageScaling>
-      <blurSize>15</blurSize>
-      <erosionSize>5</erosionSize>
-      <parentFrameName>${parent_frame_name}</parentFrameName>
-      <x>${x}</x>
-      <y>${y}</y>
-      <z>${z}</z>
-      <roll>${roll}</roll>
-      <pitch>${pitch}</pitch>
-      <yaw>${yaw}</yaw>
+    <plugin name="{{ camera_name }}{{ camera_suffix }}_plugin" filename="libMrsGazeboCommonResources_RealsensePlugin.so">
+      <camera_name>{{ camera_name }}</camera_name>
+      <camera_suffix>{{ camera_suffix }}</camera_suffix>
+
+      <useRealistic>{{ realistic }}</useRealistic>
+      <minDisparitySGM>1</minDisparitySGM>
+      <numDisparitiesSGM>16</numDisparitiesSGM>
+      <blockSizeSGM>5</blockSizeSGM>
+      <imageScaling>2</imageScaling>
+      <depthSaturation>12000</depthSaturation>
+      <backgroundNoise>0.1</backgroundNoise>
+      <defectKernelSize>5</defectKernelSize>
+      <randomNoise>5</randomNoise>
+
+      <parentFrameName>{{ frame_fcu }}</parentFrameName>
+      <x>{{ x }}</x>
+      <y>{{ y }}</y>
+      <z>{{ z }}</z>
+      <roll>{{ roll }}</roll>
+      <pitch>{{ pitch }}</pitch>
+      <yaw>{{ yaw }}</yaw>
     </plugin>
   ...
 ```
