@@ -205,7 +205,7 @@ public:
                << std::endl;
         this->depthSaturation = 12000u;
       }
-      this->depthSaturationScaled = this->depthSaturation / DEPTH_SCALE_M;
+      this->depthSaturationScaled = this->depthSaturation * DEPTH_SCALE_M;
 
       getSdfParam(_sdf, "blockSizeSGM", this->blockSize, 3u);
       if (this->blockSize % 2 == 0 || this->blockSize < 0) {
@@ -413,7 +413,7 @@ public:
     cv::randn(noise, this->randomNoiseScale, this->randomNoiseScale);     
     cv::add(disparity,noise,disparity);
 
-    // Merge disparity data with depthMap data
+    // Merge disparity data with depthMap data, squaring disparity increases error over distance
     cv::Mat depth_mat(int(depthCam->ImageHeight()), int(depthCam->ImageWidth()), CV_16UC1, cv::Scalar(0));
     const float* depthDataFloat = this->depthCam->DepthData();
 
@@ -422,9 +422,8 @@ public:
       for( unsigned j = L_ignore; j < imageWidth; ++j){
         
         const float cur_depth = depthDataFloat[i*imageWidth + j];
-
         if (cur_depth <= this->depthCam->NearClip() || cur_depth >= this->depthCam->FarClip()  || cur_depth > SCALED_UINT16_MAX  || cur_depth < 0){
-          if (std::rand() / RAND_MAX > (1 - this->backgroundNoise)){
+          if (static_cast<float>(std::rand()) / RAND_MAX > (1.0 - this->backgroundNoise)){
             for(int k = -1; k <= 1; ++k){
               for(int l = -1; l <= 1; ++l){
                 if ( k + i > 0 && l + j > 0 && k + i < imageHeight - 1 && l + j < imageWidth - 1){
@@ -440,6 +439,7 @@ public:
             depth_mat.at<uint16_t>(i,j) = this->depthSaturation * disparity.at<uint16_t>(i,j) * disparity.at<uint16_t>(i,j) / UINT16_MAX; 
           }
         }
+        
       }
     }
     

@@ -149,7 +149,7 @@ Modified version of the official [Realsense Gazebo plugin](https://github.com/in
 ### Description
 - Simulates a Realsense D435 RGB-D camera sensor in Gazebo.
 - The original plugin has been extended to publish tranform message on topic `/tf_gazebo_static`. To make this transformation visible in ROS use our [Static transform republisher plugin](../world_plugins/README.md#static-transform-republisher-plugin) in your `world` definition. 
-- A "realistic" mode with more noise and virtually reduced resolution may be activated using the `useRealistic` flag in the `session.yaml` file.
+- A "realistic" mode with more noise and virtually reduced resolution may be activated using the `realistic` flag in the `session.yaml` file.
 
 ### Usage
 The parameter configuration can be found in [mrs_uav_gazebo_simulation](https://github.com/ctu-mrs/mrs_uav_gazebo_simulation/tree/master).
@@ -181,6 +181,17 @@ If missing, after building, add the following to `generic_components.sdf.jinja`.
     </plugin>
   ...
 ```
+#### Parameter description used by the "realistic" mode
+| Parameter name        | Values                | Description                                                                                                                                          |
+|-----------------------|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `minDisparitySGM`     | `int`                 | See [OpenCV documentation](https://docs.opencv.org/4.x/d2/d85/classcv_1_1StereoSGBM.html). Optimized and should not be changed                       |
+| `numDisparitiesSGM`   | `int` divisible by 16 | See [OpenCV documentation](https://docs.opencv.org/4.x/d2/d85/classcv_1_1StereoSGBM.html). Optimized and should not be changed                       | 
+| `blockSizeSGM`        | An odd `int` >=1      | See [OpenCV documentation](https://docs.opencv.org/4.x/d2/d85/classcv_1_1StereoSGBM.html). Optimized and should not be changed                       | 
+| `imageScaling`        | `int` >=1             | The ratio between desired output image resolution and input image resolution (e.g., in 120x60 -> out 240x120 for scale value of 2)                   |
+| `depthSaturation`     | `unsigned int`        | Upper limit (in milimeters) at which the algorithm can still perceive depth. Objects between this distance and `FarClip` will render at this distance|
+| `backgroundNoise`     | `float` in range [0,1]| Adds rough noise to regions outside [`NearClip`,`FarClip`] range. Computationally intense higher values                                              |
+| `defectKernelSize`    | `unsigned int`        | Defines the size of kernels used for erosion and blur operations                                                                                     |
+| `randomNoise`         | `unsigned int` < 128  | Adds random noise to every non-depth-saturated pixel inside [`NearClip`,`FarClip`] range. Strongly affects point cloud quality                       |
 
 ## Servo camera plugin
 
