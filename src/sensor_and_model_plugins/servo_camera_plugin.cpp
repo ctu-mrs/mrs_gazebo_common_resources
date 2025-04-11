@@ -25,6 +25,7 @@
 #include <gazebo_msgs/SetModelState.h>
 #include <gazebo_msgs/ModelStates.h>
 #include <nav_msgs/Odometry.h>
+#include <mrs_msgs/Vec4.h>
 
 #include <ignition/math.hh>
 
@@ -39,14 +40,23 @@ public:
 private:
   physics::ModelPtr  model;
   ros::NodeHandle *  nh;
+  
   ros::ServiceServer tilt_compensation_pitch_srv;
   ros::ServiceServer tilt_compensation_roll_srv;
+  ros::ServiceServer tilt_compensation_yaw_srv;
+
+  ros::ServiceServer camera_orientation_srv;
   ros::Subscriber    camera_orientation_sub;
+  ros::Publisher     camera_orientation_pub;
+
   ros::Timer         camera_timer;
 
   void desiredOrientationCallback(const std_msgs::Float32MultiArray &desired_orientation);
+  bool setOrientationCallback(mrs_msgs::Vec4Request &req, mrs_msgs::Vec4Response &res);
+  
   bool triggerTiltCompensationPitchCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
   bool triggerTiltCompensationRollCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
+  bool triggerTiltCompensationYawCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
 
   void   updateModelOrientation();
   void   OnUpdate();
@@ -58,12 +68,15 @@ private:
   std::string parent_name;
   std::string joint_name_pitch;
   std::string joint_name_roll;
+  std::string joint_name_yaw;
   std::string parent_link_pitch;
   std::string parent_link_roll;
+  std::string parent_link_yaw;
 
   // camera offset with respect to model
   double offset_roll  = 0.0;
   double offset_pitch = 0.0;
+  double offset_yaw   = 0.0;
 
   double update_rate;  // update rate of camera position
 
@@ -79,12 +92,19 @@ private:
   double max_roll_rate;
   bool   compensate_tilt_roll;
 
+  double desired_yaw;
+  double min_yaw;
+  double max_yaw;
+  double max_yaw_rate;
+  bool   compensate_tilt_yaw;
+
   std::mutex mutex_desired_orientation;
 
   // model orientation in world frame
   std::mutex mutex_model_orientation;
   double     model_roll;
   double     model_pitch;
+  double     model_yaw;
 
   bool initialized = false;
 
@@ -97,7 +117,6 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   ROS_INFO("[%s]: Servo camera plugin started.", ros::this_node::getName().c_str());
   model       = _parent;
   parent_name = model->GetName().c_str();
-
   /* Load params //{ */
 
   if (_sdf->HasElement("max_pitch_rate")) {
@@ -112,6 +131,13 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   } else {
     ROS_WARN("[%s][Servo camera]: Max roll rate not defined. Setting to default value.", parent_name.c_str());
     max_roll_rate = 10;
+  }
+
+  if (_sdf->HasElement("max_yaw_rate")) {
+    max_yaw_rate = _sdf->Get<double>("max_yaw_rate");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Max yaw rate not defined. Setting to default value.", parent_name.c_str());
+    max_yaw_rate = 10;
   }
 
   if (_sdf->HasElement("min_pitch")) {
@@ -142,6 +168,20 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
     max_roll = 0.5;
   }
 
+  if (_sdf->HasElement("min_yaw")) {
+    min_yaw = _sdf->Get<double>("min_yaw");
+  } else {
+    ROS_WARN("[%s][Servo camera]: min_yaw not defined. Setting to default value.", parent_name.c_str());
+    min_yaw = -1.57;
+  }
+
+  if (_sdf->HasElement("max_yaw")) {
+    max_yaw = _sdf->Get<double>("max_yaw");
+  } else {
+    ROS_WARN("[%s][Servo camera]: max_yaw not defined. Setting to default value.", parent_name.c_str());
+    max_yaw = 1.57;
+  }
+
   if (_sdf->HasElement("update_rate")) {
     update_rate = _sdf->Get<double>("update_rate");
   } else {
@@ -161,6 +201,12 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
     ROS_WARN("[%s][Servo camera]: Joint name roll not defined.", parent_name.c_str());
   }
 
+  if (_sdf->HasElement("joint_name_yaw")) {
+    joint_name_yaw = _sdf->Get<std::string>("joint_name_yaw");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Joint name yaw not defined.", parent_name.c_str());
+  }
+
   if (_sdf->HasElement("parent_link_pitch")) {
     parent_link_pitch = _sdf->Get<std::string>("parent_link_pitch");
   } else {
@@ -173,6 +219,12 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
     ROS_WARN("[%s][Servo camera]: Parent link roll not defined.", parent_name.c_str());
   }
 
+  if (_sdf->HasElement("parent_link_yaw")) {
+    parent_link_yaw = _sdf->Get<std::string>("parent_link_yaw");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Parent link yaw not defined.", parent_name.c_str());
+  }
+
   if (_sdf->HasElement("compensate_tilt_pitch")) {
     compensate_tilt_pitch = _sdf->Get<bool>("compensate_tilt_pitch");
   } else {
@@ -183,6 +235,12 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
     compensate_tilt_roll = _sdf->Get<bool>("compensate_tilt_roll");
   } else {
     ROS_WARN("[%s][Servo camera]: Tilt roll compensation not defined.", parent_name.c_str());
+  }
+
+  if (_sdf->HasElement("compensate_tilt_yaw")) {
+    compensate_tilt_yaw = _sdf->Get<bool>("compensate_tilt_yaw");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Tilt yaw compensation not defined.", parent_name.c_str());
   }
   //}
 
@@ -197,6 +255,16 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   ss << "/" << parent_name << "/servo_camera/desired_orientation";
   camera_orientation_sub = nh->subscribe(ss.str().c_str(), 1, &ServoCameraPlugin::desiredOrientationCallback, this);
 
+  // ROS service to control the camera orientation
+  ss.str(std::string());
+  ss << "/" << parent_name << "/servo_camera/set_orientation";
+  camera_orientation_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::setOrientationCallback, this);
+
+  // ROS publisher for camera orientation
+  ss.str(std::string());
+  ss << "/" << parent_name << "/servo_camera/camera_orientation";
+  camera_orientation_pub = nh->advertise<std_msgs::Float32MultiArray>(ss.str().c_str(), 1);
+
   // ROS services for triggering roll and pitch tilt compensation
   ss.str(std::string());
   ss << "/" << parent_name << "/servo_camera/compensate_tilt_pitch";
@@ -205,6 +273,10 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   ss.str(std::string());
   ss << "/" << parent_name << "/servo_camera/compensate_tilt_roll";
   tilt_compensation_roll_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationRollCallback, this);
+
+  ss.str(std::string());
+  ss << "/" << parent_name << "/servo_camera/compensate_tilt_yaw";
+  tilt_compensation_yaw_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationYawCallback, this);
 
   camera_timer = nh->createTimer(ros::Rate(update_rate), &ServoCameraPlugin::cameraTimerCallback, this);
 
@@ -230,21 +302,56 @@ void ServoCameraPlugin::cameraTimerCallback(const ros::TimerEvent &event) {
 /* desiredOrientationCallback */  //{
 void ServoCameraPlugin::desiredOrientationCallback(const std_msgs::Float32MultiArray &msg) {
 
-  if (msg.data.size() != 2) {
+  if (msg.data.size() > 3 || msg.data.size() < 1) {
     ROS_INFO("[%s][Servo camera]: cameraOrientationCallback: Invalid request. Unexpected size of data.", parent_name.c_str());
     return;
   }
 
   std::scoped_lock lock(mutex_desired_orientation);
-  desired_pitch = fmin(fmax(min_pitch, msg.data[1]), max_pitch);  // clip value in limits
-  desired_pitch = getBoundedAngle(desired_pitch);
-  ROS_INFO("[%s][Servo camera]: Change camera pitch to %.2f! Requested unlimited pitch = %.2f", parent_name.c_str(), desired_pitch, msg.data[1]);
-
+  
   desired_roll = fmin(fmax(min_roll, msg.data[0]), max_roll);  // clip value in limits
   desired_roll = getBoundedAngle(desired_roll);
   ROS_INFO("[%s][Servo camera]: Change camera roll to %.2f! Requested unlimited roll = %.2f", parent_name.c_str(), desired_pitch, msg.data[0]);
+  if (msg.data.size() == 1) return;
+  
+  desired_pitch = fmin(fmax(min_pitch, msg.data[1]), max_pitch);  // clip value in limits
+  desired_pitch = getBoundedAngle(desired_pitch);
+  ROS_INFO("[%s][Servo camera]: Change camera pitch to %.2f! Requested unlimited pitch = %.2f", parent_name.c_str(), desired_pitch, msg.data[1]);
+  if (msg.data.size() == 2) return;
+
+  desired_yaw = fmin(fmax(min_yaw, msg.data[2]), max_yaw);  // clip value in limits
+  desired_yaw = getBoundedAngle(desired_yaw);
+  ROS_INFO("[%s][Servo camera]: Change camera yaw to %.2f! Requested unlimited yaw = %.2f", parent_name.c_str(), desired_yaw, msg.data[2]);
 }
 //}
+
+/* setOrientationCallback() //{ */
+bool ServoCameraPlugin::setOrientationCallback(mrs_msgs::Vec4Request &req, mrs_msgs::Vec4Response &res) {
+  std::scoped_lock lock(mutex_desired_orientation);
+
+  desired_roll = fmin(fmax(min_roll, req.goal[0]), max_roll);  // clip value in limits
+  desired_roll = getBoundedAngle(desired_roll);
+  ROS_INFO("[%s][Servo camera]: Change camera roll to %.2f! Requested unlimited roll = %.2f", parent_name.c_str(), desired_roll, req.goal[0]);
+
+  desired_pitch = fmin(fmax(min_pitch, req.goal[1]), max_pitch);  // clip value in limits
+  desired_pitch = getBoundedAngle(desired_pitch);
+  ROS_INFO("[%s][Servo camera]: Change camera pitch to %.2f! Requested unlimited pitch = %.2f", parent_name.c_str(), desired_pitch, req.goal[1]);
+
+  desired_yaw = fmin(fmax(min_yaw, req.goal[2]), max_yaw);  // clip value in limits
+  desired_yaw = getBoundedAngle(desired_yaw);
+  ROS_INFO("[%s][Servo camera]: Change camera yaw to %.2f! Requested unlimited yaw = %.2f", parent_name.c_str(), desired_yaw, req.goal[2]);
+
+  if (req.goal[3] != 0) {
+    ROS_WARN("[%s][Servo camera]: Camera orientation message received with non-zero value in 4th element. Ignoring it.", parent_name.c_str());
+  }
+
+  res.success = true;
+  res.message = "Camera orientation message received";
+
+  return res.success;
+}
+// }
+
 
 /* triggerTiltCompensationPitchCallback() */  //{
 bool ServoCameraPlugin::triggerTiltCompensationPitchCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
@@ -274,6 +381,19 @@ bool ServoCameraPlugin::triggerTiltCompensationRollCallback(std_srvs::SetBoolReq
 }
 //}
 
+/* triggerTiltCompensationYawCallback() */  //{
+bool ServoCameraPlugin::triggerTiltCompensationYawCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
+
+  ROS_INFO("[%s][Servo camera]: Trigger tilt compensation yaw!", parent_name.c_str());
+
+  compensate_tilt_yaw = req.data;
+  res.message         = compensate_tilt_yaw ? "tilt compensation enabled" : "tilt compensation disabled";
+  ROS_WARN("[%s][Servo Camera]: %s.", parent_name.c_str(), res.message.c_str());
+
+  res.success = true;
+  return res.success;
+}
+
 /* getBoundedAngle(double angle) //{ */
 double ServoCameraPlugin::getBoundedAngle(double angle) {
   return angle > M_PI ? -2 * M_PI + angle : angle < -M_PI ? 2 * M_PI + angle : angle;
@@ -289,6 +409,7 @@ void ServoCameraPlugin::moveCamera() {
     // get desired pitch and roll angles compensated for current tilts of model
     double compensated_pitch = compensate_tilt_pitch ? desired_pitch - model_pitch : desired_pitch;
     double compensated_roll  = compensate_tilt_roll ? desired_roll - model_roll : desired_roll;
+    double compensated_yaw   = compensate_tilt_yaw ? desired_yaw - model_yaw : desired_yaw;
 
     // find required angle in next step that satisfies limits on angular_rates
     double abs_diff_pitch = abs(offset_pitch - compensated_pitch);
@@ -312,7 +433,33 @@ void ServoCameraPlugin::moveCamera() {
       offset_roll += dir * fmin(abs(min_diff_roll), max_roll_rate / update_rate);
       offset_roll = getBoundedAngle(offset_roll);
     }
+
+    double abs_diff_yaw = abs(offset_yaw - compensated_yaw);
+    double min_diff_yaw = abs_diff_yaw > M_PI ? 2 * M_PI - abs_diff_yaw : abs_diff_yaw;
+
+    if (abs(min_diff_yaw) > 1e-4) {
+
+      double dir = compensated_yaw > offset_yaw ? 1.0 : -1.0;
+      dir        = abs(min_diff_yaw - abs_diff_yaw) > 1e-4 ? -1.0 * dir : dir;
+      offset_yaw += dir * fmin(abs(min_diff_yaw), max_yaw_rate / update_rate);
+      offset_yaw = getBoundedAngle(offset_yaw);
+    }
   }
+
+  std_msgs::Float32MultiArray msg;
+
+  std_msgs::MultiArrayLayout layout;
+  layout.dim.resize(1);
+  layout.dim[0].size = 3;
+  layout.dim[0].label = "RPY";
+  layout.dim[0].stride = 3;
+  
+  msg.layout = layout;
+  msg.data.push_back(model_roll);
+  msg.data.push_back(model_pitch);
+  msg.data.push_back(model_yaw);
+
+  camera_orientation_pub.publish(msg);
 
   // set joint coordinates based on computed required orientations of links
   if (model->GetLink(parent_link_roll) != NULL) {
@@ -368,6 +515,33 @@ void ServoCameraPlugin::moveCamera() {
   } else {
     ROS_WARN_THROTTLE(1.0, "[%s]: Model has no link %s", ros::this_node::getName().c_str(), parent_link_pitch.c_str());
   }
+
+  if (model->GetLink(parent_link_yaw) != NULL) {
+
+    if (model->GetLink(parent_link_yaw)->GetChildJoints().size() != 0) {
+
+      int index_yaw = -1;
+      for (size_t i = 0; i < model->GetLink(parent_link_yaw)->GetChildJoints().size(); i++) {
+
+        if (model->GetLink(parent_link_yaw)->GetChildJoints()[i]->GetName() == joint_name_yaw) {
+          index_yaw = i;
+          break;
+        }
+      }
+
+      if (index_yaw != -1) {
+        // model->GetLink(parent_link_yaw)->GetChildJoints()[index_yaw]->SetPosition(0, offset_yaw);
+      } else {
+        ROS_WARN_THROTTLE(1.0, "[%s]: Servo camera yaw joint did not found.", ros::this_node::getName().c_str());
+      }
+
+    } else {
+      ROS_WARN_THROTTLE(1.0, "[%s]: Link %s has no child joints", ros::this_node::getName().c_str(), parent_link_yaw.c_str());
+    }
+
+  } else {
+    ROS_WARN_THROTTLE(1.0, "[%s]: Model has no link %s", ros::this_node::getName().c_str(), parent_link_yaw.c_str());
+  }
 }
 //}
 
@@ -380,6 +554,7 @@ void ServoCameraPlugin::updateModelOrientation() {
   ignition::math::Pose3d model_pose = model->WorldPose();
   model_roll                        = model_pose.Rot().Roll();
   model_pitch                       = model_pose.Rot().Pitch();
+  model_yaw                         = model_pose.Rot().Yaw();
 }
 //}
 
