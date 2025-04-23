@@ -356,12 +356,13 @@ bool ServoCameraPlugin::setOrientationCallback(mrs_msgs::Vec4Request &req, mrs_m
   desired_yaw = new_desired_yaw;
 
   std::stringstream ss;
-  ss << "Processed camera orientation settings R: " << std::fixed << std::setprecision(2) << desired_roll
-    << ", P: " << std::fixed << std::setprecision(2) << desired_pitch
-    << ", Y: " << std::fixed << std::setprecision(2) << desired_yaw;
+  ss << "Camera orientation processed. " << std::fixed << std::setprecision(2) 
+     << "Roll: requested = " << req.goal[0] << ", limited = " << desired_roll << "; "
+     << "Pitch: requested = " << req.goal[1] << ", limited = " << desired_pitch << "; "
+     << "Yaw: requested = " << req.goal[2] << ", limited = " << desired_yaw << ".";
 
   res.success = true;
-  res.message = ss.str(); 
+  res.message = ss.str();
 
   return true;
 }
