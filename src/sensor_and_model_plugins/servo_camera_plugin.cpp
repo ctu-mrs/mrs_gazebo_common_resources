@@ -26,6 +26,8 @@
 #include <gazebo_msgs/ModelStates.h>
 #include <nav_msgs/Odometry.h>
 #include <mrs_msgs/Vec4.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <ignition/math.hh>
 
@@ -50,6 +52,7 @@ private:
   ros::Publisher     camera_orientation_pub;
 
   ros::Timer         camera_timer;
+  tf2_ros::TransformBroadcaster tf_broadcaster_;
 
   void desiredOrientationCallback(const std_msgs::Float32MultiArray &desired_orientation);
   bool setOrientationCallback(mrs_msgs::Vec4Request &req, mrs_msgs::Vec4Response &res);
@@ -59,6 +62,8 @@ private:
   bool triggerTiltCompensationYawCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
 
   void   updateModelOrientation();
+  void   publishTF();
+  void   publishCameraOrientation();
   void   OnUpdate();
   void   cameraTimerCallback(const ros::TimerEvent &event);
   void   moveCamera();
@@ -66,9 +71,11 @@ private:
 
   // camera and gimbal link and joint names
   std::string parent_name;
+
   std::string joint_name_pitch;
   std::string joint_name_roll;
   std::string joint_name_yaw;
+
   std::string parent_link_pitch;
   std::string parent_link_roll;
   std::string parent_link_yaw;
@@ -296,6 +303,7 @@ void ServoCameraPlugin::cameraTimerCallback(const ros::TimerEvent &event) {
   }
 
   moveCamera();
+  publishTF();
 }
 //}
 
@@ -543,22 +551,27 @@ void ServoCameraPlugin::moveCamera() {
   } else {
     ROS_WARN_THROTTLE(1.0, "[%s]: Model has no link %s", ros::this_node::getName().c_str(), parent_link_yaw.c_str());
   }
+}
+//}
+
+/* publishCameraOrientation() //{ */
+void ServoCameraPlugin::publishCameraOrientation() {
+  std::scoped_lock lock(mutex_desired_orientation);
 
   std_msgs::Float32MultiArray msg;
 
   std_msgs::MultiArrayLayout layout;
   layout.dim.resize(1);
-  layout.dim[0].size = 3;
-  layout.dim[0].label = "RPY";
+  layout.dim[0].label  = "RPY";
+  layout.dim[0].size   = 3;
   layout.dim[0].stride = 3;
-  
+
   msg.layout = layout;
   msg.data.push_back(offset_roll);
   msg.data.push_back(offset_pitch);
   msg.data.push_back(offset_yaw);
 
   camera_orientation_pub.publish(msg);
-
 }
 //}
 
@@ -572,6 +585,30 @@ void ServoCameraPlugin::updateModelOrientation() {
   model_roll                        = model_pose.Rot().Roll();
   model_pitch                       = model_pose.Rot().Pitch();
   model_yaw                         = model_pose.Rot().Yaw();
+}
+//}
+
+/* publishTF() //{ */
+void ServoCameraPlugin::publishTF() {
+  std::scoped_lock lock(mutex_model_orientation);
+
+  tf2::Quaternion q;
+  q.setRPY(offset_roll, offset_pitch, offset_yaw);
+
+  geometry_msgs::TransformStamped transform;
+  transform.header.stamp    = ros::Time::now();
+  transform.header.frame_id = "uav1/fcu";
+  transform.child_frame_id  = "uav1/servo_camera";
+
+  transform.transform.translation.x = 0;
+  transform.transform.translation.y = 0;
+  transform.transform.translation.z = 0;
+
+  transform.transform.rotation = tf2::toMsg(q);
+
+  // Send the transform
+  tf_broadcaster_.sendTransform(transform);
+  // ROS_INFO_ONCE("[%s]: TF published.", ros::this_node::getName().c_str());
 }
 //}
 
