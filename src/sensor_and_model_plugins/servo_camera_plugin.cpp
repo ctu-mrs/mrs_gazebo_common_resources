@@ -36,6 +36,7 @@ namespace gazebo {
 struct ServoJoint {
   std::string name;
   std::string parent_link;
+  std::string frame_name;
   double      min_angle;
   double      max_angle;
   double      max_rate;
@@ -82,6 +83,7 @@ class ServoCameraPlugin : public ModelPlugin {
 
   // camera and joint names
   std::string parent_name;
+  std::string parent_frame_name;
 
   ServoJoint roll_servo_joint;
   ServoJoint pitch_servo_joint;
@@ -119,6 +121,13 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   parent_name = model->GetName().c_str();
 
   /* Load params //{ */
+  if (_sdf->HasElement("parent_frame_name")) {
+    parent_frame_name = _sdf->Get<std::string>("parent_frame_name");
+  } else {
+    ROS_WARN("[%s][Servo camera]: Parent frame name not defined. Setting to default value.", parent_name.c_str());
+    parent_frame_name = "world";
+  }
+
   if (_sdf->HasElement("update_rate")) {
     update_rate = _sdf->Get<double>("update_rate");
   } else {
@@ -138,6 +147,11 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
       yaw_servo_joint.parent_link = yaw_elem->Get<std::string>("parent_link");
     else
       ROS_WARN("[%s][Servo camera]: Parent link yaw not defined.", parent_name.c_str());
+
+    if (yaw_elem->HasElement("frame_name"))
+      yaw_servo_joint.frame_name = yaw_elem->Get<std::string>("frame_name");
+    else
+      ROS_WARN("[%s][Servo camera]: Frame name yaw not defined.", parent_name.c_str());
 
     if (yaw_elem->HasElement("min_angle"))
       yaw_servo_joint.min_angle = yaw_elem->Get<double>("min_angle");
@@ -190,6 +204,11 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
     else
       ROS_WARN("[%s][Servo camera]: Parent link roll not defined.", parent_name.c_str());
 
+    if (roll_elem->HasElement("frame_name"))
+      roll_servo_joint.frame_name = roll_elem->Get<std::string>("frame_name");
+    else
+      ROS_WARN("[%s][Servo camera]: Frame name roll not defined.", parent_name.c_str());
+
     if (roll_elem->HasElement("min_angle"))
       roll_servo_joint.min_angle = roll_elem->Get<double>("min_angle");
     else
@@ -239,6 +258,11 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
       pitch_servo_joint.parent_link = pitch_elem->Get<std::string>("parent_link");
     else
       ROS_WARN("[%s][Servo camera]: Parent link pitch not defined.", parent_name.c_str());
+
+    if (pitch_elem->HasElement("frame_name"))
+      pitch_servo_joint.frame_name = pitch_elem->Get<std::string>("frame_name");
+    else
+      ROS_WARN("[%s][Servo camera]: Frame name pitch not defined.", parent_name.c_str());
 
     if (pitch_elem->HasElement("min_angle"))
       pitch_servo_joint.min_angle = pitch_elem->Get<double>("min_angle");
@@ -328,6 +352,7 @@ void ServoCameraPlugin::cameraTimerCallback(const ros::TimerEvent &event) {
   if (!initialized) return;
 
   moveCamera();
+  publishCameraOrientation();
   publishTF();
 }
 //}
@@ -579,6 +604,58 @@ void ServoCameraPlugin::publishCameraOrientation() {
 }
 //}
 
+/* publishTF() //{ */
+void ServoCameraPlugin::publishTF() {
+  std::scoped_lock lock(mutex_model_orientation);
+
+  // Yaw
+  geometry_msgs::TransformStamped transform_yaw;
+  transform_yaw.header.stamp    = ros::Time::now();
+  transform_yaw.header.frame_id = parent_frame_name;
+  transform_yaw.child_frame_id  = yaw_servo_joint.frame_name;
+  
+  transform_yaw.transform.translation.x = yaw_servo_joint.offset_x;
+  transform_yaw.transform.translation.y = yaw_servo_joint.offset_y;
+  transform_yaw.transform.translation.z = yaw_servo_joint.offset_z;
+
+  tf2::Quaternion q_yaw;
+  q_yaw.setRPY(0, 0, offset_yaw);
+  transform_yaw.transform.rotation = tf2::toMsg(q_yaw);
+
+  // Roll
+  geometry_msgs::TransformStamped transform_roll;
+  transform_roll.header.stamp    = ros::Time::now();
+  transform_roll.header.frame_id = yaw_servo_joint.frame_name;
+  transform_roll.child_frame_id  = roll_servo_joint.frame_name;
+
+  transform_roll.transform.translation.x = roll_servo_joint.offset_x;
+  transform_roll.transform.translation.y = roll_servo_joint.offset_y;
+  transform_roll.transform.translation.z = roll_servo_joint.offset_z;
+
+  tf2::Quaternion q_roll;
+  q_roll.setRPY(offset_roll, 0, 0);
+  transform_roll.transform.rotation = tf2::toMsg(q_roll);
+
+  // Pitch
+  geometry_msgs::TransformStamped transform_pitch;
+  transform_pitch.header.stamp    = ros::Time::now();
+  transform_pitch.header.frame_id = roll_servo_joint.frame_name;
+  transform_pitch.child_frame_id  = pitch_servo_joint.frame_name;
+
+  transform_pitch.transform.translation.x = pitch_servo_joint.offset_x;
+  transform_pitch.transform.translation.y = pitch_servo_joint.offset_y;
+  transform_pitch.transform.translation.z = pitch_servo_joint.offset_z;
+
+  tf2::Quaternion q_pitch;
+  q_pitch.setRPY(0, offset_pitch, 0);
+  transform_pitch.transform.rotation = tf2::toMsg(q_pitch);
+
+  // Publish the transforms
+  tf_broadcaster_.sendTransform({transform_yaw, transform_roll, transform_pitch});
+  // ROS_INFO_ONCE("[%s]: TF published.", ros::this_node::getName().c_str());
+}
+//}
+
 /* updateCameraPosition() //{ */
 void ServoCameraPlugin::updateModelOrientation() {
   // get tilts of model
@@ -589,30 +666,6 @@ void ServoCameraPlugin::updateModelOrientation() {
   model_roll                        = model_pose.Rot().Roll();
   model_pitch                       = model_pose.Rot().Pitch();
   model_yaw                         = model_pose.Rot().Yaw();
-}
-//}
-
-/* publishTF() //{ */
-void ServoCameraPlugin::publishTF() {
-  std::scoped_lock lock(mutex_model_orientation);
-
-  tf2::Quaternion q;
-  q.setRPY(offset_roll, offset_pitch, offset_yaw);
-
-  geometry_msgs::TransformStamped transform;
-  transform.header.stamp    = ros::Time::now();
-  transform.header.frame_id = "uav1/fcu";
-  transform.child_frame_id  = "uav1/servo_camera";
-
-  transform.transform.translation.x = 0;
-  transform.transform.translation.y = 0;
-  transform.transform.translation.z = 0;
-
-  transform.transform.rotation = tf2::toMsg(q);
-
-  // Send the transform
-  tf_broadcaster_.sendTransform(transform);
-  // ROS_INFO_ONCE("[%s]: TF published.", ros::this_node::getName().c_str());
 }
 //}
 
