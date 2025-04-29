@@ -96,11 +96,10 @@ class ServoCameraPlugin : public ModelPlugin {
 
   double update_rate;  // update rate of camera position
 
+  std::mutex mutex_desired_orientation;
   double desired_pitch;
   double desired_roll;
   double desired_yaw;
-
-  std::mutex mutex_desired_orientation;
 
   // model orientation in world frame
   std::mutex mutex_model_orientation;
@@ -392,24 +391,26 @@ bool ServoCameraPlugin::setOrientationCallback(mrs_msgs::Vec4Request &req, mrs_m
     ROS_WARN("[%s][Servo camera]: %s", parent_name.c_str(), res.message.c_str());
     return true;
   }
-
-  std::scoped_lock lock(mutex_desired_orientation);
-
+  
   double new_desired_roll = fmin(fmax(roll_servo_joint.min_angle, req.goal[0]), roll_servo_joint.max_angle);  // clip value in limits
   new_desired_roll        = getBoundedAngle(new_desired_roll);
   ROS_INFO("[%s][Servo camera]: Change camera roll to %.2f! Requested unlimited roll = %.2f", parent_name.c_str(), new_desired_roll, req.goal[0]);
-
+  
   double new_desired_pitch = fmin(fmax(pitch_servo_joint.min_angle, req.goal[1]), pitch_servo_joint.max_angle);  // clip value in limits
   new_desired_pitch        = getBoundedAngle(new_desired_pitch);
   ROS_INFO("[%s][Servo camera]: Change camera pitch to %.2f! Requested unlimited pitch = %.2f", parent_name.c_str(), new_desired_pitch, req.goal[1]);
-
+  
   double new_desired_yaw = fmin(fmax(yaw_servo_joint.min_angle, req.goal[2]), yaw_servo_joint.max_angle);  // clip value in limits
   new_desired_yaw        = getBoundedAngle(new_desired_yaw);
   ROS_INFO("[%s][Servo camera]: Change camera yaw to %.2f! Requested unlimited yaw = %.2f", parent_name.c_str(), new_desired_yaw, req.goal[2]);
 
-  desired_roll  = new_desired_roll;
-  desired_pitch = new_desired_pitch;
-  desired_yaw   = new_desired_yaw;
+  { /// Lock mutex just for the desired orientation assignment
+    std::scoped_lock lock(mutex_desired_orientation);
+
+    desired_roll  = new_desired_roll;
+    desired_pitch = new_desired_pitch;
+    desired_yaw   = new_desired_yaw;
+  }
 
   std::stringstream ss;
   ss << "Camera orientation processed. " << std::fixed << std::setprecision(2) 
