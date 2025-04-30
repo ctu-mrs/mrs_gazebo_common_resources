@@ -232,7 +232,7 @@ After building, activate by adding the following to your robot definition.
 ```
 
 > [!TIP]
-> Complete example of usage including creating links and joints can be found in [MRS robots description file](https://github.com/ctu-mrs/mrs_simulation/blob/436440c667accc4d85d8e9c8c16e877775f4c080/models/mrs_robots_description/sdf/component_snippets.sdf.jinja#L2318).
+> Complete example of usage including creating links and joints can be found in [MRS robots description file](https://github.com/ctu-mrs/mrs_simulation/blob/master/models/mrs_robots_description/sdf/component_snippets.sdf.jinja#L2318).
 
 ### Camera Orientation
 The camera orientation can be set using the following topics and services. The camera orientation is represented as a 3D vector of angles in radians. The order of angles in the vector messages is `roll`, `pitch`, `yaw`, but the order of angles in the simulator are applied in the order: `yaw` (`pan`), `roll`, `pitch` (`tilt`).
