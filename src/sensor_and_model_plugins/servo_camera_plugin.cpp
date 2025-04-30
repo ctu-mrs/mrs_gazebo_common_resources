@@ -511,7 +511,7 @@ void ServoCameraPlugin::moveCamera() {
   }
 
   // set joint coordinates based on computed required orientations of links
-  if (model->GetLink(roll_servo_joint.name) != NULL) {
+  if (model->GetLink(roll_servo_joint.parent_link) != NULL) {
     if (model->GetLink(roll_servo_joint.parent_link)->GetChildJoints().size() != 0) {
       int index_roll = -1;
       for (size_t i = 0; i < model->GetLink(roll_servo_joint.parent_link)->GetChildJoints().size(); i++) {
