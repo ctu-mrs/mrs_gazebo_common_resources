@@ -188,46 +188,46 @@ After building, activate by adding the following to your robot definition.
 
 ```xml
   ...
-  <plugin name="servo_camera_plugin" filename="libMrsGazeboCommonResources_ServoCameraPlugin.so">
-    <update_rate>${tilt_update_rate}</update_rate>
-    <parent_frame_name>${parent_frame_name}</parent_frame_name>
-    <yaw>
-      <max_rate>${max_yaw_rate}</max_rate>
-      <max_angle>${max_yaw}</max_angle>
-      <min_angle>${min_yaw}</min_angle>
-      <joint_name>servo_camera_yaw_joint</joint_name>
-      <parent_link>${parent}</parent_link>
-      <frame_name>${frame_namespace}/yaw</frame_name>
-      <compensate_tilt>${compensate_tilt_yaw}</compensate_tilt>
-      <offset_x>${offset_yaw_link_x}</offset_x>
-      <offset_y>${offset_yaw_link_y}</offset_y>
-      <offset_z>${offset_yaw_link_z}</offset_z>
-    </yaw>
-    <roll>
-      <max_rate>${max_roll_rate}</max_rate>
-      <max_angle>${max_roll}</max_angle>
-      <min_angle>${min_roll}</min_angle>
-      <joint_name>servo_camera_roll_joint</joint_name>
-      <parent_link>servo_camera_gimbal_yaw_link</parent_link>
-      <frame_name>${frame_namespace}/roll</frame_name>
-      <compensate_tilt>${compensate_tilt_roll}</compensate_tilt>
-      <offset_x>${offset_roll_link_x}</offset_x>
-      <offset_y>${offset_roll_link_y}</offset_y>
-      <offset_z>${offset_roll_link_z}</offset_z>
-    </roll>
-    <pitch>
-      <max_rate>${max_pitch_rate}</max_rate>
-      <max_angle>${max_pitch}</max_angle>
-      <min_angle>${min_pitch}</min_angle>
-      <joint_name>servo_camera_pitch_joint</joint_name>
-      <parent_link>servo_camera_gimbal_roll_link</parent_link>
-      <frame_name>${frame_namespace}/pitch</frame_name>
-      <compensate_tilt>${compensate_tilt_pitch}</compensate_tilt>
-      <offset_x>${offset_pitch_link_x}</offset_x>
-      <offset_y>${offset_pitch_link_y}</offset_y>
-      <offset_z>${offset_pitch_link_z}</offset_z>
-    </pitch>
-  </plugin>
+    <plugin name="servo_camera_plugin" filename="libMrsGazeboCommonResources_ServoCameraPlugin.so">
+      <update_rate>${tilt_update_rate}</update_rate>
+      <parent_frame_name>${parent_frame_name}</parent_frame_name>
+      <yaw>
+        <max_rate>${max_yaw_rate}</max_rate>
+        <max_angle>${max_yaw}</max_angle>
+        <min_angle>${min_yaw}</min_angle>
+        <joint_name>servo_camera_yaw_joint</joint_name>
+        <parent_link>${parent}</parent_link>
+        <frame_name>${yaw_frame_name}</frame_name>
+        <compensate_tilt>${compensate_tilt_yaw}</compensate_tilt>
+        <offset_x>${offset_yaw_link_x}</offset_x>
+        <offset_y>${offset_yaw_link_y}</offset_y>
+        <offset_z>${offset_yaw_link_z}</offset_z>
+      </yaw>
+      <roll>
+        <max_rate>${max_roll_rate}</max_rate>
+        <max_angle>${max_roll}</max_angle>
+        <min_angle>${min_roll}</min_angle>
+        <joint_name>servo_camera_roll_joint</joint_name>
+        <parent_link>servo_camera_gimbal_yaw_link</parent_link>
+        <frame_name>${roll_frame_namespace}</frame_name>
+        <compensate_tilt>${compensate_tilt_roll}</compensate_tilt>
+        <offset_x>${offset_roll_link_x}</offset_x>
+        <offset_y>${offset_roll_link_y}</offset_y>
+        <offset_z>${offset_roll_link_z}</offset_z>
+      </roll>
+      <pitch>
+        <max_rate>${max_pitch_rate}</max_rate>
+        <max_angle>${max_pitch}</max_angle>
+        <min_angle>${min_pitch}</min_angle>
+        <joint_name>servo_camera_pitch_joint</joint_name>
+        <parent_link>servo_camera_gimbal_roll_link</parent_link>
+        <frame_name>${pitch_frame_name}</frame_name>
+        <compensate_tilt>${compensate_tilt_pitch}</compensate_tilt>
+        <offset_x>${offset_pitch_link_x}</offset_x>
+        <offset_y>${offset_pitch_link_y}</offset_y>
+        <offset_z>${offset_pitch_link_z}</offset_z>
+      </pitch>
+    </plugin>
   ...
 ```
 
