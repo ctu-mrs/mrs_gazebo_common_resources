@@ -6,7 +6,7 @@ Modified version from the `gazebo_plugins:` [gazebo_ros_range.cpp](https://githu
 
 ### Description
 - Simulate rangefinder sensor in Gazebo
-- The original plugin has been extended to publish tranform message on topic `/tf_gazebo_static`. To make this transformation visible in ROS use our [Static transform republisher plugin](../world_plugins/README.md#static-transform-republisher-plugin) in your `world` definition. 
+- The original plugin has been extended to publish transform message on topic `/tf_gazebo_static`. To make this transformation visible in ROS use our [Static transform republisher plugin](../world_plugins/README.md#static-transform-republisher-plugin) in your `world` definition. 
 
 
 ### Usage
@@ -39,7 +39,7 @@ Modified version from the `gazebo_plugins:` [gazebo_ros_laser.cpp](https://githu
 
 ### Description
 - Simulates a 2D lidar sensor in Gazebo.
-- The original plugin has been extended to publish tranform message on topic `/tf_gazebo_static`. To make this transformation visible in ROS use our [Static transform republisher plugin](../world_plugins/README.md#static-transform-republisher-plugin) in your `world` definition. 
+- The original plugin has been extended to publish transform message on topic `/tf_gazebo_static`. To make this transformation visible in ROS use our [Static transform republisher plugin](../world_plugins/README.md#static-transform-republisher-plugin) in your `world` definition. 
 
 
 ### Usage
@@ -235,17 +235,17 @@ After building, activate by adding the following to your robot definition.
 > Complete example of usage including creating links and joints can be found in [MRS robots description file](https://github.com/ctu-mrs/mrs_simulation/blob/master/models/mrs_robots_description/sdf/component_snippets.sdf.jinja#L2318).
 
 ### Camera Orientation
-The camera orientation can be set using the following topics and services. The camera orientation is represented as a 3D vector of angles in radians. The order of angles in the vector messages is `roll`, `pitch`, `yaw`, but the order of angles in the simulator are applied in the order: `yaw` (`pan`), `roll`, `pitch` (`tilt`).
+The camera orientation can be set using the following topics and services. The camera orientation is represented as a 3D vector of angles in radians. The order of angles in the vector messages is `roll`, `pitch`, `yaw`, but the order of angles in the simulator are applied in the order: `yaw` (`pan`), `roll`, `pitch` (`tilt`) as a common convention in camera gimbals.
 
 #### Reading Camera Orientation
 - **Topic**: `/servo_camera/camera_orientation`
   - **Type**: `std_msgs/Float32MultiArray`
-  - **Description**: Publishes the current camera orientation as [`yaw`, `roll`, `pitch`] in radians.
+  - **Description**: Publishes the current camera orientation as [`roll`, `pitch`, `yaw`] in radians.
 
 #### Setting Camera Orientation
 - **Topic**: `/servo_camera/desired_orientation`
   - **Type**: `std_msgs/Float32MultiArray`
-  - **Description**: Sets the desired camera orientation as [`yaw`, `roll`, `pitch`] in radians.
+  - **Description**: Sets the desired camera orientation as [`roll`, `pitch`, `yaw`] in radians.
 
   ```sh
   rostopic pub /uav_name/servo_camera/desired_orientation std_msgs/Float32MultiArray 
