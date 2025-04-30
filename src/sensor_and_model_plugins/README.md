@@ -232,9 +232,11 @@ After building, activate by adding the following to your robot definition.
 ```
 
 > [!TIP]
-> Complete example of usage including creating links and joints can be found in [MRS robots description file](https://github.com/ctu-mrs/mrs_simulation/blob/master/models/mrs_robots_description/urdf/component_snippets.xacro).
+> Complete example of usage including creating links and joints can be found in [MRS robots description file](https://github.com/ctu-mrs/mrs_simulation/blob/436440c667accc4d85d8e9c8c16e877775f4c080/models/mrs_robots_description/sdf/component_snippets.sdf.jinja#L2318).
 
-### Topics and Services
+### Camera Orientation
+The camera orientation can be set using the following topics and services. The camera orientation is represented as a 3D vector of angles in radians. The order of angles in the vector messages is `roll`, `pitch`, `yaw`, but the order of angles in the simulator are applied in the order: `yaw` (`pan`), `roll`, `pitch` (`tilt`).
+
 #### Reading Camera Orientation
 - **Topic**: `/servo_camera/camera_orientation`
   - **Type**: `std_msgs/Float32MultiArray`
@@ -258,7 +260,7 @@ After building, activate by adding the following to your robot definition.
 
 - **Service**: `/servo_camera/set_orientation`
   - **Type**: `mrs_msgs/Vec4`
-  - **Description**: Sets the desired camera orientation. Only the first three values (RPY) are used.
+  - **Description**: Sets the desired camera orientation in radians. Only the first three values (RPY) are used.
   ```sh
   rosservice call /uav1/servo_camera/set_orientation "goal:
   - 0.0
