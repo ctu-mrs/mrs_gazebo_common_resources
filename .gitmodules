@@ -1,0 +1,3 @@
+[submodule "src/sensor_and_model_plugins/propulsion_module"]
+	path = src/sensor_and_model_plugins/propulsion_module
+	url = git@mrs.fel.cvut.cz:agile-flight/propulsion_module.git

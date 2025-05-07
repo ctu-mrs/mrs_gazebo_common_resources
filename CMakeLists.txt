@@ -35,6 +35,7 @@ find_package(Boost REQUIRED COMPONENTS thread)
 
 # include Eigen3
 find_package(Eigen3 REQUIRED)
+find_package(yaml-cpp REQUIRED)
 set(Eigen_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS})
 set(Eigen_LIBRARIES ${Eigen_LIBRARIES})
 
@@ -99,6 +100,7 @@ set(LIBRARIES
   MrsGazeboCommonResources_DynamicModelPlugin
   MrsGazeboCommonResources_SafetyLedPlugin
   MrsGazeboCommonResources_FluidResistancePlugin
+  MrsGazeboCommonResources_BatteryPlugin
   MrsGazeboCommonResources_MotorSpeedRepublisherPlugin
   MrsGazeboCommonResources_MotorPropModelPlugin
   MrsGazeboCommonResources_LinkStaticTFPublisher
@@ -119,6 +121,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include
+  src/sensor_and_model_plugins/propulsion_module/include
   ${GAZEBO_INCLUDE_DIRS}
   ${GAZEBO_MSG_INCLUDE_DIRS}
   ${CMAKE_CURRENT_BINARY_DIR}
@@ -344,6 +347,18 @@ target_link_libraries(MrsGazeboCommonResources_FluidResistancePlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
+  )
+
+add_library(MrsGazeboCommonResources_BatteryPlugin SHARED
+  src/sensor_and_model_plugins/battery_plugin.cpp
+  src/sensor_and_model_plugins/propulsion_module/src/propulsion_module.cpp
+  )
+
+target_link_libraries(MrsGazeboCommonResources_BatteryPlugin
+  ${GAZEBO_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  yaml-cpp
   )
 
 # MotorSpeedRepublisherPlugin
