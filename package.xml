@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
-<package format="2">
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  
   <name>mrs_gazebo_common_resources</name>
-  <version>1.0.3</version>
+  <version>2.0.0</version>
   <description>This package contains common gazebo files (worlds, models and plugins) for the MRS system.</description>
 
   <author email="vojtech.spurny@fel.cvut.cz">Vojtech Spurny</author>
@@ -10,29 +12,29 @@
 
   <license>BSD 3-Clause</license>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_ros</buildtool_depend>
 
-  <depend>gazebo_plugins</depend>
-  <depend>gazebo_ros</depend>
-  <depend>geometry_msgs</depend>
-  <depend>roscpp</depend>
+  <depend>rclcpp</depend>
+  <depend>ros_gz</depend>
+  <depend>ros_gz_sim</depend>
   <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_msgs</depend>
   <depend>tf2_ros</depend>
-
-  <depend>gazebo</depend>
-  <depend>boost</depend>
-  <depend>libqt5-widgets</depend>
-  <depend>mav_msgs</depend>
+  <depend>eigen</depend>
 
   <export>
+    
+    <build_type>ament_cmake</build_type>
     <!-- gazebo_ros_paths_plugin automatically adds these to
       GAZEBO_PLUGIN_PATH and GAZEBO_MODEL_PATH when you do this export inside
       the package.xml file. You can than use URIs of type model://my_package/stuff. -->
     <gazebo_ros gazebo_model_path="${prefix}/models"/>
     <gazebo_ros gazebo_media_path="${prefix}"/>
     <gazebo_ros plugin_path="${prefix}/lib"/>
+
   </export>
 
 </package>

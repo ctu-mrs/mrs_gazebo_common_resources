@@ -1,156 +1,83 @@
 <?xml version="1.0" ?>
-<?xml-model href="http://sdformat.org/schemas/root.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
-<sdf version="1.5">
+
+<sdf version="1.6">
   <world name="default">
-    <!-- <plugin name="mrs_gazebo_link_attacher_plugin" filename="libMRSGazeboLinkAttacherPlugin.so"/> -->
-    <plugin name="mrs_gazebo_static_transform_republisher_plugin" filename="libMrsGazeboCommonResources_StaticTransformRepublisher.so"/>
-      
-    <!-- coordinate system {-->
+
+    <!-- Processes the NavSat sensor -->
+    <plugin
+      filename="gz-sim-navsat-system"
+      name="gz::sim::systems::NavSat">
+    </plugin>
+
+    <!-- Handles requests to update the spherical coordinates -->
+    <plugin
+      filename="gz-sim-user-commands-system"
+      name="gz::sim::systems::UserCommands">
+    </plugin>
+
+    <!-- Populates the GUI with data from the server -->
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+
+    <!-- Processes pose commands -->
+    <plugin
+      filename="gz-sim-physics-system"
+      name="gz::sim::systems::Physics">
+    </plugin>
+
+    <!-- Set the coordinates for the world origin -->
     <spherical_coordinates>
       <surface_model>EARTH_WGS84</surface_model>
+      <world_frame_orientation>ENU</world_frame_orientation>
       <latitude_deg>47.397743</latitude_deg>
       <longitude_deg>8.545594</longitude_deg>
       <elevation>0.0</elevation>
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
-    <!--}-->
 
-    <!-- physics engine {-->
-    <physics name="default_physics" default="0" type="ode">
-      <gravity>0 0 -9.8066</gravity>
-      <ode>
-        <solver>
-          <type>quick</type>
-          <iters>10</iters>
-          <sor>1.3</sor>
-          <use_dynamic_moi_rescaling>0</use_dynamic_moi_rescaling>
-        </solver>
-        <constraints>
-          <cfm>0</cfm>
-          <erp>0.2</erp>
-          <contact_max_correcting_vel>1000</contact_max_correcting_vel>
-          <contact_surface_layer>0.001</contact_surface_layer>
-        </constraints>
-      </ode>
-      <max_step_size>0.004</max_step_size>
-      <real_time_factor>1</real_time_factor>
-      <real_time_update_rate>250</real_time_update_rate>
-      <magnetic_field>6.0e-06 2.3e-05 -4.2e-05</magnetic_field>
-    </physics>
-    <!--}-->
+    <start_paused>false</start_paused>
 
-    <!-- setup shadows {-->
-    <scene>
-      <shadows>false</shadows>
-      <!-- <sky> -->
-      <!--   <clouds/> -->
-      <!-- </sky> -->
-    </scene>
-    <!--}-->
-
-    <!-- sun {-->
-
-    <light name='sun' type='directional'>
-      <pose frame=''>0 0 1000 0.4 0.2 0</pose>
-      <diffuse>1 1 1 1</diffuse>
-      <specular>0.6 0.6 0.6 1</specular>
-      <direction>0.1 0.1 -0.9</direction>
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
       <attenuation>
-        <range>20</range>
-        <constant>0.5</constant>
+        <range>1000</range>
+        <constant>0.9</constant>
         <linear>0.01</linear>
         <quadratic>0.001</quadratic>
       </attenuation>
-      <cast_shadows>1</cast_shadows>
+      <direction>-0.5 0.1 -0.9</direction>
     </light>
 
-    <!--}-->
-
-    <!-- ground plane {-->
     <model name="ground_plane">
       <static>true</static>
       <link name="link">
         <collision name="collision">
-          <pose>0 0 0 0 0 0</pose>
           <geometry>
             <plane>
               <normal>0 0 1</normal>
-              <size>250 250</size>
+              <size>100 100</size>
             </plane>
           </geometry>
-          <surface>
-            <contact>
-              <ode>
-                <min_depth>0.01</min_depth>
-                <max_vel>0.0</max_vel>
-              </ode>
-            </contact>
-            <friction>
-              <ode/>
-            </friction>
-          </surface>
         </collision>
-        <visual name="grass">
-          <pose>0 0 0 0 0 0</pose>
-          <cast_shadows>false</cast_shadows>
+        <visual name="visual">
           <geometry>
-            <mesh>
-              <uri>file://grass_plane/meshes/grass_plane.dae</uri>
-            </mesh>
-          </geometry>
-          <!-- <material> -->
-          <!--   <script> -->
-          <!--     <uri>file://media/materials/scripts/Gazebo.material</uri> -->
-          <!--     <name>Gazebo/Grass</name> -->
-          <!--   </script> -->
-          <!-- </material> -->
-        </visual>
-      </link>
-    </model>
-    <!--}-->
-
-    <!-- THE VOID (for spawning objects out of camera view) {-->
-    <model name='the_void'>
-      <static>1</static>
-      <link name='link'>
-        <pose frame=''>0 0 0.1 0 -0 0</pose>
-        <visual name='the_void'>
-          <pose frame=''>0 0 2 0 -0 0</pose>
-          <geometry>
-            <sphere>
-              <radius>0.25</radius>
-            </sphere>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
           </geometry>
           <material>
-            <script>
-              <uri>file://media/materials/scripts/Gazebo.material</uri>
-              <name>Gazebo/Black</name>
-            </script>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.8 0.8 0.8 1</diffuse>
+            <specular>0.8 0.8 0.8 1</specular>
           </material>
         </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
       </link>
-      <pose frame=''>-1000 -1000 0 0 0 0</pose>
     </model>
-    <!--}-->
-
-    <!-- user camera {-->
-    <gui>
-      <camera name="camera">
-        <pose>-60 -100 30 0 0.4 0.89</pose>
-      </camera>
-    </gui>
-    <!--}-->
-
-    <!-- GUI frame synchronization {-->
-    <plugin name="mrs_gazebo_rviz_cam_synchronizer" filename="libMrsGazeboCommonResources_RvizCameraSynchronizer.so" >
-      <target_frame_id>gazebo_user_camera</target_frame_id>
-      <world_origin_frame_id>uav1/gps_origin</world_origin_frame_id>
-      <frame_to_follow>uav1</frame_to_follow>
-    </plugin>
-    <!--}-->
-
   </world>
 </sdf>
