@@ -1,7 +1,6 @@
 /**  \file
-     \brief Defines class that applies linear drag force to the uav body.
-     \inspiration https://www.theconstructsim.com/q-a-190-air-drag-in-gazebo/
-     \author Ondrej Prochazka - prochon4@fel.cvut.cz
+     \brief Defines class that models the battery of the UAV in gazebo
+     \author Parakh M. Gupta - guptapar@fel.cvut.cz
  */
 
 #include "common.h"
@@ -81,8 +80,9 @@ private:
   PropulsionModule propulsion_module_;
   void VelocityCallback(CommandMotorSpeedPtr &rot_velocities);
   sensor_msgs::BatteryState battery_state_msg_;
-  std::vector<double> throttles;
+  std::vector<double> motor_thrusts_;
   size_t NUM_MOTORS = 4;
+  double motor_constant_ = 0.0;
 };
 
 //}
@@ -121,10 +121,21 @@ void BatteryPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
         battery_voltage_);
   }
 
-    propulsion_module_.initBattery(battery_voltage_, ros::Time::now().toSec());
+  if (_sdf->HasElement("motor_constant")) {
+    motor_constant_ = _sdf->Get<double>("motor_constant");
+  } else {
+    ROS_WARN(
+        "[BatteryPlugin]: No battery_voltage given, setting default "
+        "name %f",
+        motor_constant_);
+  }
 
-  if (_sdf->HasElement("verbose")) {
-    verbose = _sdf->Get<double>("verbose");
+    propulsion_module_.initBattery(battery_voltage_, ros::Time::now().toSec());
+    motor_thrusts_.resize(NUM_MOTORS);
+    battery_state_msg_.cell_voltage.resize(NUM_MOTORS);
+
+    if (_sdf->HasElement("verbose")) {
+      verbose = _sdf->Get<double>("verbose");
   } else {
     ROS_WARN(
         "[BatteryPlugin]: No verbose Given, setting default "
@@ -158,7 +169,7 @@ void BatteryPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
 
   // Create our ROS node. This acts in a similar manner to
   // the Gazebo node
-  rosNode.reset(new ros::NodeHandle("fluid_resistance_node"));
+  rosNode.reset(new ros::NodeHandle("gazebo_battery_plugin"));
   battery_state_pub_ = rosNode->advertise<sensor_msgs::BatteryState>("gazebo_battery_state", 1);
 
 #if (GAZEBO_MAJOR_VERSION >= 8)
@@ -190,11 +201,11 @@ void BatteryPlugin::OnUpdate() {
 /* PublishBatteryStats() //{ */
 void BatteryPlugin::PublishBatteryStats() {
 
-    double current = propulsion_module_.getTotalCurrentFromThrottles(throttles);
+    double current = propulsion_module_.getTotalCurrentFromThrusts(motor_thrusts_);
     propulsion_module_.updateBatterySoc(current, ros::Time::now().toSec());
     battery_state_msg_.header.stamp = ros::Time::now();
-    battery_state_msg_.voltage = propulsion_module_.getVccFromThrottles(throttles);
-    battery_state_msg_.current = propulsion_module_.getTotalCurrentFromThrottles(throttles);
+    battery_state_msg_.voltage = propulsion_module_.getBatteryVoltageFromSoc(propulsion_module_.getBatterySoc()) - propulsion_module_.getTotalCurrentFromThrusts(motor_thrusts_) * propulsion_module_.getBatteryResistanceFromSoc(propulsion_module_.getBatterySoc());
+    battery_state_msg_.current = propulsion_module_.getTotalCurrentFromThrusts(motor_thrusts_);
     battery_state_msg_.capacity = propulsion_module_.getBatterySoc();
     battery_state_pub_.publish(battery_state_msg_);
     //std::cout << "Publishing Battery State" << std::endl;
@@ -203,13 +214,12 @@ void BatteryPlugin::PublishBatteryStats() {
 
 /* VelocityCallback() //{  */
 void BatteryPlugin::VelocityCallback(CommandMotorSpeedPtr &rot_velocities) {
-  std::cout << rot_velocities->motor_speed_size() << std::endl;
-  for (int i; i < NUM_MOTORS; i++) {
-    std::cout << rot_velocities->motor_speed(i) << " ";
-  }
-  throttles.resize(NUM_MOTORS);
+  // std::cout << rot_velocities->motor_speed_size() << std::endl;
+  // for (int i; i < NUM_MOTORS; i++) {
+  //   std::cout << rot_velocities->motor_speed(i) << " ";
+  // }
   for (int i = 0; i < NUM_MOTORS; i++) {
-    throttles.at(i) = rot_velocities->motor_speed(i);
+    motor_thrusts_.at(i) = pow(rot_velocities->motor_speed(i),2.0) * motor_constant_;
   }
 }
 //}
