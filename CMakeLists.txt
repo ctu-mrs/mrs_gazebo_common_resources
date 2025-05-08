@@ -378,6 +378,7 @@ target_link_libraries(MrsGazeboCommonResources_MotorSpeedRepublisherPlugin
 
 add_library(MrsGazeboCommonResources_MotorPropModelPlugin SHARED
   src/physics_plugins/motor_prop_model_plugin.cpp
+  src/sensor_and_model_plugins/propulsion_module/src/propulsion_module.cpp
   ${SEN_PROTO_SRCS}
   )
 
@@ -385,6 +386,7 @@ target_link_libraries(MrsGazeboCommonResources_MotorPropModelPlugin
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
+  yaml-cpp
   )
 
 # LinkStaticTFPublisher

@@ -22,6 +22,9 @@
 
 #include <stdio.h>
 
+#include <ros/ros.h>
+#include <ros/package.h>
+#include <sensor_msgs/BatteryState.h>
 #include <boost/bind.hpp>
 #include <Eigen/Eigen>
 #include <gazebo/gazebo.hh>
@@ -38,6 +41,7 @@
 
 #include "common.h"
 
+#include <propulsion_module.hpp>
 
 namespace turning_direction {
 const static int CCW = 1;
@@ -98,6 +102,9 @@ class GazeboMotorPropModel : public MotorPropModel, public ModelPlugin {
   std::string link_name_;
   std::string motor_speed_pub_topic_{kDefaultMotorVelocityPubTopic};
   std::string namespace_;
+  std::string propulsion_config_file_;
+  double battery_voltage_ = 16.0;
+  std::unique_ptr<ros::NodeHandle> rosNode;  // node use for ROS transport
 
   int motor_number_{0};
   int turning_direction_{turning_direction::CW};
@@ -146,8 +153,11 @@ class GazeboMotorPropModel : public MotorPropModel, public ModelPlugin {
   void VelocityCallback(CommandMotorSpeedPtr &rot_velocities);
   void MotorFailureCallback(const boost::shared_ptr<const msgs::Int> &fail_msg);  /*!< Callback for the motor_failure_sub_ subscriber */
   void WindVelocityCallback(const boost::shared_ptr<const physics_msgs::msgs::Wind> &msg);
+  void BatteryStateCallback(const sensor_msgs::BatteryState &msg);
 
   std::unique_ptr<FirstOrderFilter<double>>  rotor_velocity_filter_;
+  PropulsionModule propulsion_module_;
+  ros::Subscriber battery_state_sub_;
 /*
   // Protobuf test
   std::string motor_test_sub_topic_;

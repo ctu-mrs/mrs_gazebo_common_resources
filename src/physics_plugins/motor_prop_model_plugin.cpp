@@ -118,6 +118,20 @@ void GazeboMotorPropModel::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) 
   else
     gzerr << "[gazebo_motor_model] Please specify a turning direction ('cw' or 'ccw').\n";
 
+  if (_sdf->HasElement("propulsion_config_file")) {
+    propulsion_config_file_ = _sdf->Get<std::string>("propulsion_config_file");
+    std::cout << "[gazebo_motor_model]: Using propulsion config file: " << propulsion_config_file_ << std::endl;
+  } else {
+    ROS_WARN(
+        "[BatteryPlugin]: No Propulsion Config File given, setting default "
+        "name %s",
+        propulsion_config_file_.c_str());
+  }
+  std::string propulsion_config_file = ros::package::getPath("controller_module") + std::string("/") + propulsion_config_file_;
+  std::cout << "[gazebo_motor_model]: Using propulsion config file: " << propulsion_config_file << std::endl;
+  propulsion_module_.initialize(ros::package::getPath("controller_module") + std::string("/") + "src/propulsion_module/scripts/motor_science/alien_a300.yaml");
+  rosNode.reset(new ros::NodeHandle("gazebo_battery_plugin"));
+  battery_state_sub_ = rosNode->subscribe("/gazebo_battery_plugin/gazebo_battery_state", 1, &GazeboMotorPropModel::BatteryStateCallback, this);
   if(_sdf->HasElement("reversible")) {
     reversible_ = _sdf->GetElement("reversible")->Get<bool>();
   }
@@ -323,6 +337,13 @@ void GazeboMotorPropModel::UpdateMotorFail() {
   }
 }
 //}
+
+void GazeboMotorPropModel::BatteryStateCallback(
+    const sensor_msgs::BatteryState &msg) {
+  ROS_INFO_STREAM("Battery state received: " << msg.voltage);
+  battery_voltage_ = msg.voltage;
+  return;
+}
 
 void GazeboMotorPropModel::WindVelocityCallback(WindPtr& msg) {
   wind_vel_ = ignition::math::Vector3d(msg->velocity().x(),
