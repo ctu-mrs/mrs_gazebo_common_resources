@@ -341,7 +341,6 @@ void GazeboMotorPropModel::UpdateMotorFail() {
 
 void GazeboMotorPropModel::BatteryStateCallback(
     const sensor_msgs::BatteryState &msg) {
-  ROS_INFO_STREAM("Battery state received: " << msg.voltage);
   battery_voltage_ = msg.voltage;
   return;
 }
