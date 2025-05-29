@@ -24,6 +24,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 # include Gazebo
 find_package(gazebo REQUIRED)
+ign_import_target(UUID)
 
 # include Qt
 find_package(Qt5Widgets REQUIRED)
