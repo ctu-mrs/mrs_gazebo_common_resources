@@ -12,6 +12,7 @@ set(CATKIN_DEPENDENCIES
   tf2
   tf2_msgs
   tf2_ros
+  mrs_msgs
   )
 
 ## Find catkin macros and libraries

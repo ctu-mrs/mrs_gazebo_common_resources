@@ -26,6 +26,8 @@
   <depend>libqt5-widgets</depend>
   <depend>mav_msgs</depend>
 
+  <depend>mrs_msgs</depend>
+
   <export>
     <!-- gazebo_ros_paths_plugin automatically adds these to
       GAZEBO_PLUGIN_PATH and GAZEBO_MODEL_PATH when you do this export inside
