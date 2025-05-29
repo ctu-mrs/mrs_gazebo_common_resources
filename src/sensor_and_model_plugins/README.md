@@ -6,7 +6,7 @@ Modified version from the `gazebo_plugins:` [gazebo_ros_range.cpp](https://githu
 
 ### Description
 - Simulate rangefinder sensor in Gazebo
-- The original plugin has been extended to publish tranform message on topic `/tf_gazebo_static`. To make this transformation visible in ROS use our [Static transform republisher plugin](../world_plugins/README.md#static-transform-republisher-plugin) in your `world` definition. 
+- The original plugin has been extended to publish transform message on topic `/tf_gazebo_static`. To make this transformation visible in ROS use our [Static transform republisher plugin](../world_plugins/README.md#static-transform-republisher-plugin) in your `world` definition. 
 
 
 ### Usage
@@ -39,7 +39,7 @@ Modified version from the `gazebo_plugins:` [gazebo_ros_laser.cpp](https://githu
 
 ### Description
 - Simulates a 2D lidar sensor in Gazebo.
-- The original plugin has been extended to publish tranform message on topic `/tf_gazebo_static`. To make this transformation visible in ROS use our [Static transform republisher plugin](../world_plugins/README.md#static-transform-republisher-plugin) in your `world` definition. 
+- The original plugin has been extended to publish transform message on topic `/tf_gazebo_static`. To make this transformation visible in ROS use our [Static transform republisher plugin](../world_plugins/README.md#static-transform-republisher-plugin) in your `world` definition. 
 
 
 ### Usage
@@ -180,52 +180,115 @@ After building, activate by adding the following to your robot definition.
 ## Servo camera plugin
 
 ### Description
-- Simulates camera with adjustable pitch and roll angle. The plugin enables to control 2 revolute joints simulating 2-axis gimbal. The plugin requests references to existing links and joints that should be controlled.
+- Simulates a 3-axis gimbal camera with independently adjustable `yaw`, `pitch`, and `roll` angles. It enables control of three revolute joints, emulating the behavior of a real gimbal. The plugin requires references to existing links and joints in your robot model.
+- Angles are applied in the order: `yaw` (`pan`), `roll`, `pitch` (`tilt`)-the most common convention in camera gimbals.
 
 ### Usage
 After building, activate by adding the following to your robot definition.
 
 ```xml
   ...
-    <gazebo>
-      <plugin name="servo_camera_plugin" filename="libMRSGazeboServoCameraPlugin.so">
-        <tilt_update_rate>${tilt_update_rate}</tilt_update_rate>
-        <max_pitch_rate>${max_pitch_rate}</max_pitch_rate>
-        <max_pitch>${max_pitch}</max_pitch>
-        <min_pitch>${min_pitch}</min_pitch>
-        <max_roll_rate>${max_roll_rate}</max_roll_rate>
-        <max_roll>${max_roll}</max_roll>
-        <min_roll>${min_roll}</min_roll>
-        <joint_name_pitch>${namespace}_servo_camera_joint_pitch</joint_name_pitch>
-        <joint_name_roll>${namespace}_servo_camera_joint_roll</joint_name_roll>
-        <parent_link_pitch>${namespace}_servo_camera_gimbal_link</parent_link_pitch>
-        <parent_link_roll>${parent}</parent_link_roll>
-        <compensate_tilt_roll>${compensate_tilt_roll}</compensate_tilt_roll>
-        <compensate_tilt_pitch>${compensate_tilt_pitch}</compensate_tilt_pitch>
-      </plugin>
-    </gazebo>
+    <plugin name="servo_camera_plugin" filename="libMrsGazeboCommonResources_ServoCameraPlugin.so">
+      <update_rate>${tilt_update_rate}</update_rate>
+      <parent_frame_name>${parent_frame_name}</parent_frame_name>
+      <yaw>
+        <max_rate>${max_yaw_rate}</max_rate>
+        <max_angle>${max_yaw}</max_angle>
+        <min_angle>${min_yaw}</min_angle>
+        <joint_name>servo_camera_yaw_joint</joint_name>
+        <parent_link>${parent}</parent_link>
+        <frame_name>${yaw_frame_name}</frame_name>
+        <compensate_tilt>${compensate_tilt_yaw}</compensate_tilt>
+        <offset_x>${offset_yaw_link_x}</offset_x>
+        <offset_y>${offset_yaw_link_y}</offset_y>
+        <offset_z>${offset_yaw_link_z}</offset_z>
+      </yaw>
+      <roll>
+        <max_rate>${max_roll_rate}</max_rate>
+        <max_angle>${max_roll}</max_angle>
+        <min_angle>${min_roll}</min_angle>
+        <joint_name>servo_camera_roll_joint</joint_name>
+        <parent_link>servo_camera_gimbal_yaw_link</parent_link>
+        <frame_name>${roll_frame_namespace}</frame_name>
+        <compensate_tilt>${compensate_tilt_roll}</compensate_tilt>
+        <offset_x>${offset_roll_link_x}</offset_x>
+        <offset_y>${offset_roll_link_y}</offset_y>
+        <offset_z>${offset_roll_link_z}</offset_z>
+      </roll>
+      <pitch>
+        <max_rate>${max_pitch_rate}</max_rate>
+        <max_angle>${max_pitch}</max_angle>
+        <min_angle>${min_pitch}</min_angle>
+        <joint_name>servo_camera_pitch_joint</joint_name>
+        <parent_link>servo_camera_gimbal_roll_link</parent_link>
+        <frame_name>${pitch_frame_name}</frame_name>
+        <compensate_tilt>${compensate_tilt_pitch}</compensate_tilt>
+        <offset_x>${offset_pitch_link_x}</offset_x>
+        <offset_y>${offset_pitch_link_y}</offset_y>
+        <offset_z>${offset_pitch_link_z}</offset_z>
+      </pitch>
+    </plugin>
   ...
 ```
-Complete example of usage including creating links and joints can be found in [MRS robots description file](https://github.com/ctu-mrs/mrs_simulation/blob/master/models/mrs_robots_description/urdf/component_snippets.xacro).
 
-The angle can be set by publishing desired camera angle on topic /uav_name/servo_camera/set_orientation of type std_msgs/Float32MultiArray, where first element of array is required roll angle and second element is required pitch angle, e.g.
-```
-rostopic pub /uav_name/servo_camera/desired_orientation std_msgs/Float32MultiArray 
-"layout:
-   dim:
-     label: ''
-     size: 2
-     stride: 0
-   data_offset: 0
- data: [0.0, 0.5]"
-```
+> [!TIP]
+> Complete example of usage including creating links and joints can be found in [MRS robots description file](https://github.com/ctu-mrs/mrs_simulation/blob/master/models/mrs_robots_description/sdf/component_snippets.sdf.jinja#L2318).
 
-The per axis tilt compensation simulating camera stabilization can be activated and deactivated by calling service /uav_name/servo_camera/compensate_tilt_roll or /uav_name/servo_camera/compensate_tilt_pitch, e.g. 
-```
+### Camera Orientation
+The camera orientation can be set using the following topics and services. The camera orientation is represented as a 3D vector of angles in radians. The order of angles in the vector messages is `roll`, `pitch`, `yaw`, but the order of angles in the simulator are applied in the order: `yaw` (`pan`), `roll`, `pitch` (`tilt`) as a common convention in camera gimbals.
+
+#### Reading Camera Orientation
+- **Topic**: `/servo_camera/camera_orientation`
+  - **Type**: `std_msgs/Float32MultiArray`
+  - **Description**: Publishes the current camera orientation as [`roll`, `pitch`, `yaw`] in radians.
+
+#### Setting Camera Orientation
+- **Topic**: `/servo_camera/desired_orientation`
+  - **Type**: `std_msgs/Float32MultiArray`
+  - **Description**: Sets the desired camera orientation as [`roll`, `pitch`, `yaw`] in radians.
+
+  ```sh
+  rostopic pub /uav_name/servo_camera/desired_orientation std_msgs/Float32MultiArray 
+  "layout:
+    dim:
+      label: 'RPY'
+      size: 3
+      stride: 0
+    data_offset: 0
+  data: [0.0, 0.5, 0.0]"
+  ```
+
+- **Service**: `/servo_camera/set_orientation`
+  - **Type**: `mrs_msgs/Vec4`
+  - **Description**: Sets the desired camera orientation in radians. Only the first three values (RPY) are used.
+  ```sh
+  rosservice call /uav1/servo_camera/set_orientation "goal:
+  - 0.0
+  - 0.0
+  - 1.0
+  - 0.0" # Ignored
+  ```
+
+### Tilt Compensation
+Tilt compensation is a feature that adjusts the camera's orientation to account for the tilt of the UAV in the world frame. This ensures that the camera remains aligned with the desired orientation, even if the UAV is tilted due to movement or external forces. 
+
+- **Yaw Compensation**: Disabled by default.
+- **Roll and Pitch Compensation**: Enabled by default.
+
+#### Services to Toggle Compensation
+- **Service**: `/servo_camera/compensate_tilt_yaw`
+  - **Type**: `std_srvs/SetBool`
+  - **Description**: Enables or disables yaw compensation.
+- **Service**: `/servo_camera/compensate_tilt_roll`
+  - **Type**: `std_srvs/SetBool`
+  - **Description**: Enables or disables roll compensation.
+- **Service**: `/servo_camera/compensate_tilt_pitch`
+  - **Type**: `std_srvs/SetBool`
+  - **Description**: Enables or disables pitch compensation.
+- **Service Call Example**:
+```sh
 rosservice call /uav1/servo_camera/compensate_tilt_roll "data: true"
 ```
-
-The camera image is published on topic /uav_name/servo_camera/image_raw.
 
 ## Light plugin
 
