@@ -63,7 +63,10 @@ class ServoCameraPlugin : public ModelPlugin {
   ros::Subscriber    camera_orientation_sub;
   ros::Publisher     camera_orientation_pub;
 
-  ros::Timer                    camera_timer;
+  ros::Timer     camera_timer;
+  ros::Timer     camera_goal_timer;
+  ros::Publisher camera_goal_pub;
+
   tf2_ros::TransformBroadcaster tf_broadcaster_;
 
   void desiredOrientationCallback(const std_msgs::Float32MultiArray &desired_orientation);
@@ -73,11 +76,11 @@ class ServoCameraPlugin : public ModelPlugin {
   bool triggerTiltCompensationRollCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
   bool triggerTiltCompensationYawCallback(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
 
-  void   updateModelOrientation();
   void   publishTF();
   void   publishCameraOrientation();
   void   OnUpdate();
   void   cameraTimerCallback(const ros::TimerEvent &event);
+  void   publishCameraGoal();
   void   moveCamera();
   double getBoundedAngle(double angle);
 
@@ -95,11 +98,12 @@ class ServoCameraPlugin : public ModelPlugin {
   double offset_yaw   = 0.0;
 
   double update_rate;  // update rate of camera position
+  double goal_rate;    // rate of publishing setpoint orientation
 
-  std::mutex mutex_desired_orientation;
-  double desired_pitch;
-  double desired_roll;
-  double desired_yaw;
+  std::recursive_mutex mutex_desired_orientation;
+  double               desired_pitch;
+  double               desired_roll;
+  double               desired_yaw;
 
   // model orientation in world frame
   std::mutex mutex_model_orientation;
@@ -132,6 +136,13 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   } else {
     ROS_WARN("[%s][Servo camera]: Update_rate not defined. Setting to default value.", parent_name.c_str());
     update_rate = 30;
+  }
+
+  if (_sdf->HasElement("goal_rate")) {
+    goal_rate = _sdf->Get<double>("goal_rate");
+  } else {
+    ROS_WARN("[%s][Servo camera]: goal_rate not defined. Setting to default value.", parent_name.c_str());
+    goal_rate = 1;
   }
 
   if (_sdf->HasElement("yaw")) {
@@ -308,22 +319,25 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   ros::init(argc, argv, "servo_camera_plugin", ros::init_options::NoSigintHandler);
   nh = new ros::NodeHandle("~");
 
-  // ROS subscriber for control of roll and pitch of camera
+  // ROS subscriber and service for control camera orientation
   std::stringstream ss;
-  ss << "/" << parent_name << "/servo_camera/desired_orientation";
+  ss << "/" << parent_name << "/servo_camera/set_orientation";
   camera_orientation_sub = nh->subscribe(ss.str().c_str(), 1, &ServoCameraPlugin::desiredOrientationCallback, this);
 
-  // ROS service to control the camera orientation
   ss.str(std::string());
   ss << "/" << parent_name << "/servo_camera/set_orientation";
   camera_orientation_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::setOrientationCallback, this);
 
   // ROS publisher for camera orientation
   ss.str(std::string());
-  ss << "/" << parent_name << "/servo_camera/camera_orientation";
+  ss << "/" << parent_name << "/servo_camera/orientation";
   camera_orientation_pub = nh->advertise<std_msgs::Float32MultiArray>(ss.str().c_str(), 1);
 
-  // ROS services for triggering roll and pitch tilt compensation
+  ss.str(std::string());
+  ss << "/" << parent_name << "/servo_camera/orientation_setpoint";
+  camera_goal_pub = nh->advertise<std_msgs::Float32MultiArray>(ss.str().c_str(), 1);
+
+  // ROS services for triggering compensation
   ss.str(std::string());
   ss << "/" << parent_name << "/servo_camera/compensate_tilt_pitch";
   tilt_compensation_pitch_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationPitchCallback, this);
@@ -336,12 +350,13 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   ss << "/" << parent_name << "/servo_camera/compensate_tilt_yaw";
   tilt_compensation_yaw_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationYawCallback, this);
 
-  camera_timer = nh->createTimer(ros::Rate(update_rate), &ServoCameraPlugin::cameraTimerCallback, this);
-
-  updateConnection = event::Events::ConnectWorldUpdateBegin(std::bind(&ServoCameraPlugin::OnUpdate, this));
+  // Timers
+  camera_goal_timer = nh->createTimer(ros::Rate(goal_rate).expectedCycleTime(), 
+                                      [this]([[maybe_unused]] const ros::TimerEvent &event) -> void { publishCameraGoal(); });
+  camera_timer      = nh->createTimer(ros::Rate(update_rate), &ServoCameraPlugin::cameraTimerCallback, this);
+  updateConnection  = event::Events::ConnectWorldUpdateBegin(std::bind(&ServoCameraPlugin::OnUpdate, this));
 
   initialized = true;
-
   ROS_INFO("[%s][Servo camera]: Servo camera initialized.", parent_name.c_str());
 }
 //}
@@ -356,6 +371,27 @@ void ServoCameraPlugin::cameraTimerCallback(const ros::TimerEvent &event) {
 }
 //}
 
+/* publishCameraGoal() //{ */
+void ServoCameraPlugin::publishCameraGoal() {
+  std::scoped_lock lock(mutex_desired_orientation);
+
+  std_msgs::Float32MultiArray msg;
+
+  std_msgs::MultiArrayLayout layout;
+  layout.dim.resize(1);
+  layout.dim[0].label  = "RPY";
+  layout.dim[0].size   = 3;
+  layout.dim[0].stride = 3;
+
+  msg.layout = layout;
+  msg.data.push_back(desired_roll);
+  msg.data.push_back(desired_pitch);
+  msg.data.push_back(desired_yaw);
+
+  camera_goal_pub.publish(msg);
+}
+//}
+
 /* desiredOrientationCallback */  //{
 void ServoCameraPlugin::desiredOrientationCallback(const std_msgs::Float32MultiArray &msg) {
   if (msg.data.size() > 3 || msg.data.size() < 1) {
@@ -367,18 +403,22 @@ void ServoCameraPlugin::desiredOrientationCallback(const std_msgs::Float32MultiA
 
   desired_roll = fmin(fmax(roll_servo_joint.min_angle, msg.data[0]), roll_servo_joint.max_angle);  // clip value in limits
   desired_roll = getBoundedAngle(desired_roll);
-  ROS_INFO("[%s][Servo camera]: Change camera roll to %.2f! Requested unlimited roll = %.2f", parent_name.c_str(), desired_pitch, msg.data[0]);
-  if (msg.data.size() == 1) return;
+  ROS_INFO("[%s][Servo camera]: Change camera roll to %.2f! Requested unlimited roll = %.2f", parent_name.c_str(), desired_roll, msg.data[0]);
 
-  desired_pitch = fmin(fmax(pitch_servo_joint.min_angle, msg.data[1]), pitch_servo_joint.max_angle);  // clip value in limits
-  desired_pitch = getBoundedAngle(desired_pitch);
-  ROS_INFO("[%s][Servo camera]: Change camera pitch to %.2f! Requested unlimited pitch = %.2f", parent_name.c_str(), desired_pitch, msg.data[1]);
-  if (msg.data.size() == 2) return;
+  if (msg.data.size() > 1) {
+    desired_pitch = fmin(fmax(pitch_servo_joint.min_angle, msg.data[1]), pitch_servo_joint.max_angle);  // clip value in limits
+    desired_pitch = getBoundedAngle(desired_pitch);
+    ROS_INFO("[%s][Servo camera]: Change camera pitch to %.2f! Requested unlimited pitch = %.2f", parent_name.c_str(), desired_pitch, msg.data[1]);
+  }
 
-  desired_yaw = fmin(fmax(yaw_servo_joint.min_angle, msg.data[2]), yaw_servo_joint.max_angle);  // clip value in limits
-  desired_yaw = getBoundedAngle(desired_yaw);
-  ROS_INFO("[%s][Servo camera]: Change camera yaw to %.2f! Requested unlimited yaw = %.2f", parent_name.c_str(), desired_yaw, msg.data[2]);
-  ROS_INFO("[%s][Servo camera]: ---", parent_name.c_str());
+  if (msg.data.size() > 2) {
+    desired_yaw = fmin(fmax(yaw_servo_joint.min_angle, msg.data[2]), yaw_servo_joint.max_angle);  // clip value in limits
+    desired_yaw = getBoundedAngle(desired_yaw);
+    ROS_INFO("[%s][Servo camera]: Change camera yaw to %.2f! Requested unlimited yaw = %.2f", parent_name.c_str(), desired_yaw, msg.data[2]);
+  }
+
+  // Publish the desired orientation
+  publishCameraGoal();
 }
 //}
 
@@ -391,20 +431,20 @@ bool ServoCameraPlugin::setOrientationCallback(mrs_msgs::Vec4Request &req, mrs_m
     ROS_WARN("[%s][Servo camera]: %s", parent_name.c_str(), res.message.c_str());
     return true;
   }
-  
+
   double new_desired_roll = fmin(fmax(roll_servo_joint.min_angle, req.goal[0]), roll_servo_joint.max_angle);  // clip value in limits
   new_desired_roll        = getBoundedAngle(new_desired_roll);
   ROS_INFO("[%s][Servo camera]: Change camera roll to %.2f! Requested unlimited roll = %.2f", parent_name.c_str(), new_desired_roll, req.goal[0]);
-  
+
   double new_desired_pitch = fmin(fmax(pitch_servo_joint.min_angle, req.goal[1]), pitch_servo_joint.max_angle);  // clip value in limits
   new_desired_pitch        = getBoundedAngle(new_desired_pitch);
   ROS_INFO("[%s][Servo camera]: Change camera pitch to %.2f! Requested unlimited pitch = %.2f", parent_name.c_str(), new_desired_pitch, req.goal[1]);
-  
+
   double new_desired_yaw = fmin(fmax(yaw_servo_joint.min_angle, req.goal[2]), yaw_servo_joint.max_angle);  // clip value in limits
   new_desired_yaw        = getBoundedAngle(new_desired_yaw);
   ROS_INFO("[%s][Servo camera]: Change camera yaw to %.2f! Requested unlimited yaw = %.2f", parent_name.c_str(), new_desired_yaw, req.goal[2]);
 
-  { /// Lock mutex just for the desired orientation assignment
+  {  // Lock mutex just for the desired orientation assignment
     std::scoped_lock lock(mutex_desired_orientation);
 
     desired_roll  = new_desired_roll;
@@ -413,14 +453,14 @@ bool ServoCameraPlugin::setOrientationCallback(mrs_msgs::Vec4Request &req, mrs_m
   }
 
   std::stringstream ss;
-  ss << "Camera orientation processed. " << std::fixed << std::setprecision(2) 
-     << "Roll: requested = " << req.goal[0] << ", limited = " << desired_roll << "; "
+  ss << "Camera orientation processed. " << std::fixed << std::setprecision(2) << "Roll: requested = " << req.goal[0] << ", limited = " << desired_roll << "; "
      << "Pitch: requested = " << req.goal[1] << ", limited = " << desired_pitch << "; "
      << "Yaw: requested = " << req.goal[2] << ", limited = " << desired_yaw << ".";
 
   res.success = true;
   res.message = ss.str();
 
+  publishCameraGoal();
   return true;
 }
 //}
@@ -614,7 +654,7 @@ void ServoCameraPlugin::publishTF() {
   transform_yaw.header.stamp    = ros::Time::now();
   transform_yaw.header.frame_id = parent_frame_name;
   transform_yaw.child_frame_id  = yaw_servo_joint.frame_name;
-  
+
   transform_yaw.transform.translation.x = yaw_servo_joint.offset_x;
   transform_yaw.transform.translation.y = yaw_servo_joint.offset_y;
   transform_yaw.transform.translation.z = yaw_servo_joint.offset_z;
@@ -657,8 +697,8 @@ void ServoCameraPlugin::publishTF() {
 }
 //}
 
-/* updateCameraPosition() //{ */
-void ServoCameraPlugin::updateModelOrientation() {
+/* OnUpdate //{ */
+void ServoCameraPlugin::OnUpdate() {
   // get tilts of model
   ROS_INFO_ONCE("[%s]: Updating model orientation.", ros::this_node::getName().c_str());
   std::scoped_lock lock(mutex_model_orientation);
@@ -668,10 +708,6 @@ void ServoCameraPlugin::updateModelOrientation() {
   model_pitch                       = model_pose.Rot().Pitch();
   model_yaw                         = model_pose.Rot().Yaw();
 }
-//}
-
-/* OnUpdate //{ */
-void ServoCameraPlugin::OnUpdate() { updateModelOrientation(); }
 //}
 
 GZ_REGISTER_MODEL_PLUGIN(ServoCameraPlugin)

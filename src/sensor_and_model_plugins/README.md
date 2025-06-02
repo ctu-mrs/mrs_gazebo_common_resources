@@ -238,22 +238,25 @@ After building, activate by adding the following to your robot definition.
 The camera orientation can be set using the following topics and services. The camera orientation is represented as a 3D vector of angles in radians. The order of angles in the vector messages is `roll`, `pitch`, `yaw`, but the order of angles in the simulator are applied in the order: `yaw` (`pan`), `roll`, `pitch` (`tilt`) as a common convention in camera gimbals.
 
 #### Reading Camera Orientation
-- **Topic**: `/servo_camera/camera_orientation`
+- **Topic**: `/servo_camera/orientation`
   - **Type**: `std_msgs/Float32MultiArray`
   - **Description**: Publishes the current camera orientation as [`roll`, `pitch`, `yaw`] in radians.
+- **Topic**: `/servo_camera/orientation_setpoint`
+  - **Type**: `mrs_msgs/Float32MultiArray`
+  - **Description**: Publishes the goal or setpoint camera orientation as [`roll`, `pitch`, `yaw`] in radians.
 
 #### Setting Camera Orientation
-- **Topic**: `/servo_camera/desired_orientation`
+- **Topic**: `/servo_camera/set_orientation`
   - **Type**: `std_msgs/Float32MultiArray`
   - **Description**: Sets the desired camera orientation as [`roll`, `pitch`, `yaw`] in radians.
 
   ```sh
-  rostopic pub /uav_name/servo_camera/desired_orientation std_msgs/Float32MultiArray 
+  rostopic pub /uav_name/servo_camera/set_orientation std_msgs/Float32MultiArray 
   "layout:
     dim:
       label: 'RPY'
       size: 3
-      stride: 0
+      stride: 3
     data_offset: 0
   data: [0.0, 0.5, 0.0]"
   ```
