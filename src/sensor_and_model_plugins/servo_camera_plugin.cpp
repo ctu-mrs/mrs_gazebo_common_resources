@@ -351,7 +351,7 @@ void ServoCameraPlugin::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
   tilt_compensation_yaw_srv = nh->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationYawCallback, this);
 
   // Timers
-  camera_goal_timer = nh->createTimer(ros::Rate(goal_rate).expectedCycleTime(), 
+  camera_goal_timer = nh->createTimer(ros::Duration(1.0 / goal_rate), 
                                       [this]([[maybe_unused]] const ros::TimerEvent &event) -> void { publishCameraGoal(); });
   camera_timer      = nh->createTimer(ros::Rate(update_rate), &ServoCameraPlugin::cameraTimerCallback, this);
   updateConnection  = event::Events::ConnectWorldUpdateBegin(std::bind(&ServoCameraPlugin::OnUpdate, this));
