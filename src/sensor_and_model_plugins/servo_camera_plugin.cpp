@@ -704,7 +704,7 @@ void ServoCameraPlugin::publishTF() {
 
 /* OnUpdate //{ */
 void ServoCameraPlugin::OnUpdate() {
-  // get tilts of model_
+  // get tilts of model
   ROS_INFO_ONCE("[%s]: Updating model orientation.", ros::this_node::getName().c_str());
   std::scoped_lock lock(mutex_model_orientation_);
 
