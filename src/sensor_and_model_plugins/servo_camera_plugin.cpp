@@ -31,9 +31,11 @@
 
 #include <ignition/math.hh>
 
-namespace gazebo {
+namespace gazebo
+{
 
-struct ServoJoint {
+struct ServoJoint
+{
   std::string name;
   std::string parent_link;
   std::string frame_name;
@@ -48,10 +50,10 @@ struct ServoJoint {
 
 /* Class definition */  //{
 class ServoCameraPlugin : public ModelPlugin {
- public:
+public:
   void Load(physics::ModelPtr parent, sdf::ElementPtr p_sdf);
 
- private:
+private:
   physics::ModelPtr model_;
   ros::NodeHandle  *nh_;
 
@@ -97,8 +99,8 @@ class ServoCameraPlugin : public ModelPlugin {
   double offset_pitch_ = 0.0;
   double offset_yaw_   = 0.0;
 
-  double update_rate_;  // update rate of camera position
-  double setpoint_rate_;    // rate of publishing setpoint orientation
+  double update_rate_;    // update rate of camera position
+  double setpoint_rate_;  // rate of publishing setpoint orientation
 
   std::recursive_mutex mutex_orientation_setpoint_;
   double               pitch_setpoint_;
@@ -351,10 +353,9 @@ void ServoCameraPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr p_sdf) {
   tilt_compensation_yaw_srv_ = nh_->advertiseService(ss.str().c_str(), &ServoCameraPlugin::triggerTiltCompensationYawCallback, this);
 
   // Timers
-  camera_setpoint_timer_ = nh_->createTimer(ros::Duration(1.0 / setpoint_rate_), 
-                                      [this]([[maybe_unused]] const ros::TimerEvent &event) -> void { publishCameraSetpoint(); });
-  camera_timer_      = nh_->createTimer(ros::Rate(update_rate_), &ServoCameraPlugin::cameraTimerCallback, this);
-  update_connection_  = event::Events::ConnectWorldUpdateBegin(std::bind(&ServoCameraPlugin::OnUpdate, this));
+  camera_setpoint_timer_ = nh_->createTimer(ros::Duration(1.0 / setpoint_rate_), [this]([[maybe_unused]] const ros::TimerEvent &event) -> void { publishCameraSetpoint(); });
+  camera_timer_          = nh_->createTimer(ros::Rate(update_rate_), &ServoCameraPlugin::cameraTimerCallback, this);
+  update_connection_     = event::Events::ConnectWorldUpdateBegin(std::bind(&ServoCameraPlugin::OnUpdate, this));
 
   initialized_ = true;
   ROS_INFO("[%s][Servo camera]: Servo camera initialized.", parent_name_.c_str());
@@ -363,7 +364,8 @@ void ServoCameraPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr p_sdf) {
 
 /* cameraTimerCallback */  //{
 void ServoCameraPlugin::cameraTimerCallback(const ros::TimerEvent &event) {
-  if (!initialized_) return;
+  if (!initialized_)
+    return;
 
   moveCamera();
   publishCameraOrientation();
@@ -453,9 +455,10 @@ bool ServoCameraPlugin::setOrientationCallback(mrs_msgs::Vec4Request &req, mrs_m
   }
 
   std::stringstream ss;
-  ss << "Camera orientation processed. " << std::fixed << std::setprecision(2) << "Roll: requested = " << req.goal[0] << ", limited = " << roll_setpoint_ << "; "
-     << "Pitch: requested = " << req.goal[1] << ", limited = " << pitch_setpoint_ << "; "
-     << "Yaw: requested = " << req.goal[2] << ", limited = " << yaw_setpoint_ << ".";
+  ss << "Camera orientation processed. " << std::fixed << std::setprecision(2)
+    << "Roll: requested = " << req.goal[0] << ", limited = " << roll_setpoint_ << "; "
+    << "Pitch: requested = " << req.goal[1] << ", limited = " << pitch_setpoint_ << "; "
+    << "Yaw: requested = " << req.goal[2] << ", limited = " << yaw_setpoint_ << ".";
 
   res.success = true;
   res.message = ss.str();
@@ -470,7 +473,7 @@ bool ServoCameraPlugin::triggerTiltCompensationPitchCallback(std_srvs::SetBoolRe
   ROS_INFO("[%s][Servo camera]: Trigger tilt compensation pitch!", parent_name_.c_str());
 
   pitch_servo_joint_.compensate_tilt = req.data;
-  res.message                       = pitch_servo_joint_.compensate_tilt ? "tilt compensation enabled" : "tilt compensation disabled";
+  res.message                        = pitch_servo_joint_.compensate_tilt ? "tilt compensation enabled" : "tilt compensation disabled";
   ROS_WARN("[%s][Servo Camera]: %s.", parent_name_.c_str(), res.message.c_str());
 
   res.success = true;
@@ -483,7 +486,7 @@ bool ServoCameraPlugin::triggerTiltCompensationRollCallback(std_srvs::SetBoolReq
   ROS_INFO("[%s][Servo camera]: Trigger tilt compensation roll!", parent_name_.c_str());
 
   roll_servo_joint_.compensate_tilt = req.data;
-  res.message                      = roll_servo_joint_.compensate_tilt ? "tilt compensation enabled" : "tilt compensation disabled";
+  res.message                       = roll_servo_joint_.compensate_tilt ? "tilt compensation enabled" : "tilt compensation disabled";
   ROS_WARN("[%s][Servo Camera]: %s.", parent_name_.c_str(), res.message.c_str());
 
   res.success = true;
@@ -496,7 +499,7 @@ bool ServoCameraPlugin::triggerTiltCompensationYawCallback(std_srvs::SetBoolRequ
   ROS_INFO("[%s][Servo camera]: Trigger tilt compensation yaw!", parent_name_.c_str());
 
   yaw_servo_joint_.compensate_tilt = req.data;
-  res.message                     = yaw_servo_joint_.compensate_tilt ? "tilt compensation enabled" : "tilt compensation disabled";
+  res.message                      = yaw_servo_joint_.compensate_tilt ? "tilt compensation enabled" : "tilt compensation disabled";
   ROS_WARN("[%s][Servo Camera]: %s.", parent_name_.c_str(), res.message.c_str());
 
   res.success = true;
@@ -505,7 +508,9 @@ bool ServoCameraPlugin::triggerTiltCompensationYawCallback(std_srvs::SetBoolRequ
 //}
 
 /* getBoundedAngle(double angle) //{ */
-double ServoCameraPlugin::getBoundedAngle(double angle) { return angle > M_PI ? -2 * M_PI + angle : angle < -M_PI ? 2 * M_PI + angle : angle; }
+double ServoCameraPlugin::getBoundedAngle(double angle) {
+  return angle > M_PI ? -2 * M_PI + angle : angle < -M_PI ? 2 * M_PI + angle : angle;
+}
 //}
 
 /* moveCamera() //{ */
@@ -704,9 +709,9 @@ void ServoCameraPlugin::OnUpdate() {
   std::scoped_lock lock(mutex_model_orientation_);
 
   ignition::math::Pose3d model_pose = model_->WorldPose();
-  model_roll_                        = model_pose.Rot().Roll();
-  model_pitch_                       = model_pose.Rot().Pitch();
-  model_yaw_                         = model_pose.Rot().Yaw();
+  model_roll_                       = model_pose.Rot().Roll();
+  model_pitch_                      = model_pose.Rot().Pitch();
+  model_yaw_                        = model_pose.Rot().Yaw();
 }
 //}
 
