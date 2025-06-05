@@ -576,7 +576,7 @@ void ServoCameraPlugin::moveCamera() {
       ROS_WARN_THROTTLE(1.0, "[%s]: Link %s has no child joints", ros::this_node::getName().c_str(), roll_servo_joint_.parent_link.c_str());
     }
   } else {
-    ROS_WARN_THROTTLE(1.0, "[%s]: model_ has no link %s", ros::this_node::getName().c_str(), roll_servo_joint_.parent_link.c_str());
+    ROS_WARN_THROTTLE(1.0, "[%s]: model has no link %s", ros::this_node::getName().c_str(), roll_servo_joint_.parent_link.c_str());
   }
 
   if (model_->GetLink(pitch_servo_joint_.parent_link) != NULL) {
@@ -600,7 +600,7 @@ void ServoCameraPlugin::moveCamera() {
     }
 
   } else {
-    ROS_WARN_THROTTLE(1.0, "[%s]: model_ has no link %s", ros::this_node::getName().c_str(), pitch_servo_joint_.parent_link.c_str());
+    ROS_WARN_THROTTLE(1.0, "[%s]: model has no link %s", ros::this_node::getName().c_str(), pitch_servo_joint_.parent_link.c_str());
   }
 
   if (model_->GetLink(yaw_servo_joint_.parent_link) != NULL) {
@@ -624,7 +624,7 @@ void ServoCameraPlugin::moveCamera() {
     }
 
   } else {
-    ROS_WARN_THROTTLE(1.0, "[%s]: model_ has no link %s", ros::this_node::getName().c_str(), yaw_servo_joint_.parent_link.c_str());
+    ROS_WARN_THROTTLE(1.0, "[%s]: model has no link %s", ros::this_node::getName().c_str(), yaw_servo_joint_.parent_link.c_str());
   }
 }
 //}
@@ -705,7 +705,7 @@ void ServoCameraPlugin::publishTF() {
 /* OnUpdate //{ */
 void ServoCameraPlugin::OnUpdate() {
   // get tilts of model_
-  ROS_INFO_ONCE("[%s]: Updating model_ orientation.", ros::this_node::getName().c_str());
+  ROS_INFO_ONCE("[%s]: Updating model orientation.", ros::this_node::getName().c_str());
   std::scoped_lock lock(mutex_model_orientation_);
 
   ignition::math::Pose3d model_pose = model_->WorldPose();
