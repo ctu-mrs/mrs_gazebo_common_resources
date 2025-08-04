@@ -33,7 +33,6 @@ endif()
 
 set(DEPENDENCIES
   rclcpp
-  ros_gz
   ros_gz_sim
   std_msgs
   geometry_msgs
