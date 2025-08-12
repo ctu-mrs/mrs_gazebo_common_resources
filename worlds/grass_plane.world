@@ -3,30 +3,6 @@
 <sdf version="1.6">
   <world name="default">
 
-    <!-- Processes the NavSat sensor -->
-    <plugin
-      filename="gz-sim-navsat-system"
-      name="gz::sim::systems::NavSat">
-    </plugin>
-
-    <!-- Handles requests to update the spherical coordinates -->
-    <plugin
-      filename="gz-sim-user-commands-system"
-      name="gz::sim::systems::UserCommands">
-    </plugin>
-
-    <!-- Populates the GUI with data from the server -->
-    <plugin
-      filename="gz-sim-scene-broadcaster-system"
-      name="gz::sim::systems::SceneBroadcaster">
-    </plugin>
-
-    <!-- Processes pose commands -->
-    <plugin
-      filename="gz-sim-physics-system"
-      name="gz::sim::systems::Physics">
-    </plugin>
-
     <!-- Set the coordinates for the world origin -->
     <spherical_coordinates>
       <surface_model>EARTH_WGS84</surface_model>
@@ -36,8 +12,6 @@
       <elevation>0.0</elevation>
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
-
-    <start_paused>false</start_paused>
 
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>
