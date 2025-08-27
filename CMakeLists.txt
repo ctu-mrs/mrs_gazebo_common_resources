@@ -104,6 +104,7 @@ set(LIBRARIES
   MrsGazeboCommonResources_MotorSpeedRepublisherPlugin
   MrsGazeboCommonResources_MotorPropModelPlugin
   MrsGazeboCommonResources_LinkStaticTFPublisher
+  MrsGazeboCommonResources_ImuBridgePlugin
   )
 
 catkin_package(
@@ -384,6 +385,17 @@ target_link_libraries(MrsGazeboCommonResources_LinkStaticTFPublisher
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
+  )
+
+# ImuBridgePlugin
+
+add_library(MrsGazeboCommonResources_ImuBridgePlugin SHARED
+  src/imu_bridge_plugin/imu_bridge_plugin.cpp
+  )
+
+target_link_libraries(MrsGazeboCommonResources_ImuBridgePlugin
+  ${GAZEBO_LIBRARIES}
+  ${catkin_LIBRARIES}
   )
 
 ## --------------------------------------------------------------
