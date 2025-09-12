@@ -23,20 +23,11 @@
       </collision>
       <visual name="visual">
         <geometry>
-          <!-- <box> -->
-          <!--   <size>0.8 0.8 0.3</size> -->
-          <!-- </box> -->
           <mesh>
             <uri>file://grass_plane/meshes/grass_plane.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <uri>file://media/materials/scripts/Gazebo.material</uri>
-            <name>Gazebo/Grass</name>
-          </script>
-        </material>
       </visual>
     </link>
   </model>
