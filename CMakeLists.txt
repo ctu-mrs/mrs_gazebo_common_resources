@@ -104,7 +104,7 @@ set(LIBRARIES
   MrsGazeboCommonResources_MotorSpeedRepublisherPlugin
   MrsGazeboCommonResources_MotorPropModelPlugin
   MrsGazeboCommonResources_LinkStaticTFPublisher
-  MrsGazeboCommonResources_GroundGimbaledCamera
+  MrsGazeboCommonResources_TrackingCameraPlugin
   )
 
 catkin_package(
@@ -225,12 +225,12 @@ target_link_libraries(MrsGazeboCommonResources_CameraPlugin
   CameraPlugin
   )
 
-# Ground-mounted gimbaled camers plugin
-add_library(MrsGazeboCommonResources_GroundGimbaledCamera SHARED
-  src/sensor_and_model_plugins/ground_gimbaled_camera_plugin.cpp
+# Ground-mounted trakcing camers plugin
+add_library(MrsGazeboCommonResources_TrackingCameraPlugin SHARED
+  src/sensor_and_model_plugins/tracking_camera.cpp
   )
 
-target_link_libraries(MrsGazeboCommonResources_GroundGimbaledCamera 
+target_link_libraries(MrsGazeboCommonResources_TrackingCameraPlugin 
   ${GAZEBO_LIBRARIES}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
