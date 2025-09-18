@@ -1,18 +1,26 @@
 <?xml version="1.0" ?>
-
 <sdf version="1.6">
   <world name="default">
 
-    <!-- Set the coordinates for the world origin -->
+    <!-- 
+    IMPORTANT: PLUGIN BEHAVIOR IN GAZEBO
+    This simulation world inherits plugins from a default config file
+    located in mrs_uav_gazebo_simulation/config/gazebo_server.config.
+    If you add any plugins here, it will override the default
+    configuration, so be sure to include all necessary plugins here.
+    -->
+
+    <!-- Geographic coordinates for the world origin {-->
     <spherical_coordinates>
       <surface_model>EARTH_WGS84</surface_model>
-      <world_frame_orientation>ENU</world_frame_orientation>
       <latitude_deg>47.397743</latitude_deg>
       <longitude_deg>8.545594</longitude_deg>
       <elevation>0.0</elevation>
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
+    <!--}-->
 
+    <!-- Configuring the sun as a directional light source {-->
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>
       <pose>0 0 10 0 0 0</pose>
@@ -26,32 +34,15 @@
       </attenuation>
       <direction>-0.5 0.1 -0.9</direction>
     </light>
+    <!--}-->
 
-    <model name="ground_plane">
-      <static>true</static>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>100 100</size>
-            </plane>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>100 100</size>
-            </plane>
-          </geometry>
-          <material>
-            <ambient>0.8 0.8 0.8 1</ambient>
-            <diffuse>0.8 0.8 0.8 1</diffuse>
-            <specular>0.8 0.8 0.8 1</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
+    <!-- Static ground plane {-->
+    <include>
+      <uri>model://mrs_gazebo_common_resources/models/grass_plane</uri>
+      <name>grass_plane</name>
+      <pose>0 0 0 0 0 0</pose>
+    </include>
+    <!--}-->
+
   </world>
 </sdf>
