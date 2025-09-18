@@ -30,8 +30,16 @@ if(ENABLE_COVERAGE)
   add_definitions("-g")
 endif()
 
+if ($ENV{ROS_DISTRO} STREQUAL "jazzy")
+  set(GZ_VERSION "8")
+else()
+  message("Using unsupported ROS version! You have to MAKE MANUAL CHANGES in the CMakeLists.txt and ENSURE CORRECT ROS-GZ VERSION combination, e.g. jazzy + gz-sim8. See for reference: https://gazebosim.org/docs/latest/ros_installation/")
+endif()
+
 set(DEPENDENCIES
+  ament_cmake
   rclcpp
+  gz-sim${GZ_VERSION}
   ros_gz_sim
   std_msgs
   geometry_msgs
@@ -41,15 +49,34 @@ set(DEPENDENCIES
   Eigen3
 )
 
-
 foreach(DEP IN LISTS DEPENDENCIES)
   find_package(${DEP} REQUIRED)
 endforeach()
 
+find_package(gz-plugin2 REQUIRED COMPONENTS register)
+
 include_directories(
+  include
   ${rclcpp_INCLUDE_DIRECTORIES}
   ${ros_gz_INCLUDE_DIRECTORIES}
   ${ros_gz_sim_INCLUDE_DIRECTORIES}
+)
+
+## --------------------------------------------------------------
+## |                            Build                           |
+## --------------------------------------------------------------
+
+add_library(MrsGazeboCommonResources_MulticopterMotorModel SHARED
+  src/mrs_multicopter_motor_model.cpp
+)
+
+ament_target_dependencies(MrsGazeboCommonResources_MulticopterMotorModel
+  rclcpp
+)
+
+target_link_libraries(MrsGazeboCommonResources_MulticopterMotorModel
+  gz-sim${GZ_VERSION}
+  gz-plugin2::register
 )
 
 
@@ -72,10 +99,32 @@ install(DIRECTORY worlds
   DESTINATION share/${PROJECT_NAME}
 )
 
+install(DIRECTORY include
+  DESTINATION include/${PROJECT_NAME}
+)
+
+ament_export_include_directories(
+  include
+)
+
+ament_export_libraries(
+  MrsGazeboCommonResources_MulticopterMotorModel
+)
+
+ament_target_dependencies(MrsGazeboCommonResources_MulticopterMotorModel
+  rclcpp
+)
+
+install(
+  TARGETS MrsGazeboCommonResources_MulticopterMotorModel
+  LIBRARY DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_export_dependencies(
   ${DEPENDENCIES}
 )
 
-ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.dsv.in")
+ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/hooks/extend_gz_sim_resource_path.dsv.in")
+ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/hooks/extend_gz_sim_system_plugin_path.dsv.in")
 
 ament_package()
