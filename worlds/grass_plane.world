@@ -45,8 +45,8 @@
     <!--}-->
 
     <physics name='default_physics' type="ode">
-      <max_step_size>0.004</max_step_size>
-      <real_time_update_rate>250</real_time_update_rate>
+      <max_step_size>0.005</max_step_size>
+      <real_time_update_rate>200</real_time_update_rate>
     </physics>
 
   </world>
