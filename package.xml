@@ -6,9 +6,9 @@
   <version>2.0.0</version>
   <description>This package contains common gazebo files (worlds, models and plugins) for the MRS system.</description>
 
-  <author email="vojtech.spurny@fel.cvut.cz">Vojtech Spurny</author>
   <maintainer email="vojtech.spurny@fel.cvut.cz">Vojtech Spurny</maintainer>
   <maintainer email="tomas.baca@fel.cvut.cz">Tomas Baca</maintainer>
+  <maintainer email="petr.stibinger@fel.cvut.cz">Petr Stibinger</maintainer>
 
   <license>BSD 3-Clause</license>
 
@@ -25,15 +25,7 @@
   <depend>eigen</depend>
 
   <export>
-    
     <build_type>ament_cmake</build_type>
-    <!-- gazebo_ros_paths_plugin automatically adds these to
-      GAZEBO_PLUGIN_PATH and GAZEBO_MODEL_PATH when you do this export inside
-      the package.xml file. You can than use URIs of type model://my_package/stuff. -->
-    <gazebo_ros gazebo_model_path="${prefix}/models"/>
-    <gazebo_ros gazebo_media_path="${prefix}"/>
-    <gazebo_ros plugin_path="${prefix}/lib"/>
-
   </export>
 
 </package>
