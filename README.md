@@ -18,4 +18,4 @@ This package contains common gazebo files (worlds, models and plugins) for the [
 
 ## Plugins
 
-- [sensor_plugins](src/sensor_plugins) - Detail descriptions in [README](src/sensor_plugins/README.md)
+- mrs_multicopter_motor_model - is a Gazebo plugin designed to provide a realistic simulation of multicopter motor behavior
