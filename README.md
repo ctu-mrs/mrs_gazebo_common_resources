@@ -14,7 +14,8 @@ This package contains common gazebo files (worlds, models and plugins) for the [
 ## Models
 
 - [grass_plane](models/grass_plane)
+- [tree_simple](models/tree_simple)
 
 ## Plugins
 
-- [sensor_and_model_plugins](src/sensor_and_model_plugins) - Detail descriptions in [README](src/sensor_and_model_plugins/README.md)
+- [sensor_plugins](src/sensor_plugins) - Detail descriptions in [README](src/sensor_plugins/README.md)
