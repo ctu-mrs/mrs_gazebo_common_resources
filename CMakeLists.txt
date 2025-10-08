@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
 project(mrs_gazebo_common_resources)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall")
 
 set(CATKIN_DEPENDENCIES
@@ -13,6 +17,7 @@ set(CATKIN_DEPENDENCIES
   tf2_msgs
   tf2_ros
   mrs_msgs
+  message_generation
   )
 
 ## Find catkin macros and libraries
@@ -40,6 +45,9 @@ find_package(Eigen3 REQUIRED)
 set(Eigen_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS})
 set(Eigen_LIBRARIES ${Eigen_LIBRARIES})
 
+# include pcl
+find_package(PCL REQUIRED)
+
 # XXX this approach is extremely error prone
 # it would be preferable to either depend on the
 # compiled headers from Gazebo directly
@@ -62,21 +70,26 @@ endforeach()
 # PROTOBUF_IMPORT_DIRS has to be set before
 find_package(Protobuf REQUIRED)
 
-set(sensor_msgs
-  msgs/SITLGps.proto
-  msgs/Groundtruth.proto
-  msgs/MagneticField.proto
-  msgs/Float.proto
-  msgs/CommandMotorSpeed.proto
-  msgs/MotorSpeed.proto
-  msgs/Wind.proto
+set(custom_protobuf_msgs
+  msg/SITLGps.proto
+  msg/Groundtruth.proto
+  msg/MagneticField.proto
+  msg/Float.proto
+  msg/CommandMotorSpeed.proto
+  msg/MotorSpeed.proto
+  msg/Wind.proto
   )
 
-PROTOBUF_GENERATE_CPP(SEN_PROTO_SRCS SEN_PROTO_HDRS ${sensor_msgs})
+PROTOBUF_GENERATE_CPP(SEN_PROTO_SRCS SEN_PROTO_HDRS ${custom_protobuf_msgs})
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+add_message_files(FILES
+  LivoxCustomPoint.msg
+  LivoxCustomMsg.msg
+)
+
+generate_messages(DEPENDENCIES
+  std_msgs
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -104,6 +117,7 @@ set(LIBRARIES
   MrsGazeboCommonResources_MotorSpeedRepublisherPlugin
   MrsGazeboCommonResources_MotorPropModelPlugin
   MrsGazeboCommonResources_LinkStaticTFPublisher
+  MrsGazeboCommonResources_LivoxLaserSimulationPlugin
   )
 
 catkin_package(
@@ -129,6 +143,7 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${Eigen_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
   )
 
 link_directories(${GAZEBO_LIBRARY_DIRS})
@@ -386,6 +401,22 @@ target_link_libraries(MrsGazeboCommonResources_LinkStaticTFPublisher
   ${Boost_LIBRARIES}
   )
 
+# LivoxLaserSimulationPluin
+add_library(MrsGazeboCommonResources_LivoxLaserSimulationPlugin SHARED
+  src/sensor_and_model_plugins/livox_points_plugin.cpp
+  src/sensor_and_model_plugins/livox_ode_multiray_shape.cpp
+)
+
+add_dependencies(MrsGazeboCommonResources_LivoxLaserSimulationPlugin ${${PROJECT_NAME}_EXPORTED_TARGETS}
+)
+
+target_link_libraries(MrsGazeboCommonResources_LivoxLaserSimulationPlugin
+  ${catkin_LIBRARIES}
+  ${GAZEBO_LIBRARIES}
+  RayPlugin
+  libprotobuf.so.9
+)
+
 ## --------------------------------------------------------------
 ## |                           Install                          |
 ## --------------------------------------------------------------
@@ -403,3 +434,7 @@ install(DIRECTORY models/
 install(DIRECTORY worlds/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/worlds
   )
+
+install(DIRECTORY config/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config
+)

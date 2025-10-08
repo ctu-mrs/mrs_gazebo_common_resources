@@ -16,10 +16,12 @@
   <depend>gazebo_ros</depend>
   <depend>geometry_msgs</depend>
   <depend>roscpp</depend>
+  <depend>rospack</depend>
   <depend>std_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_msgs</depend>
   <depend>tf2_ros</depend>
+  <depend>message_generation</depend>
 
   <depend>gazebo</depend>
   <depend>boost</depend>
