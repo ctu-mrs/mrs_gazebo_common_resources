@@ -8,8 +8,8 @@ This package contains common gazebo files (worlds, models and plugins) for the [
 
 ## Worlds
 
-- [forest.world](worlds/forest.world)
-- [grass_plane.world](worlds/grass_plane.world)
+- [forest.sdf](worlds/forest.sdf)
+- [grass_plane.sdf](worlds/grass_plane.sdf)
 
 ## Models
 
