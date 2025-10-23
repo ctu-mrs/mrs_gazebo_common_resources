@@ -44,6 +44,12 @@
     </include>
     <!--}-->
 
+    <include>
+      <uri>model://mrs_gazebo_common_resources/models/person_standing</uri>
+      <name>person_standing</name>
+      <pose>10 10 0 0 0 0</pose>
+    </include>
+
     <physics name='default_physics' type="ode">
       <max_step_size>0.005</max_step_size>
       <real_time_update_rate>200</real_time_update_rate>
