@@ -201,6 +201,7 @@ public:
         this->blurSize = 15u;
       }
       getSdfParam(_sdf, "erosionSize", this->erosionSize, 5u);
+      getSdfParam(_sdf, "maxRange", this->maxRange, 12.0f);
 
 
       unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -327,7 +328,7 @@ public:
     for (unsigned int i = 0; i < imageSize; ++i) {
       const float cur_depth = depthDataFloat[i];
       // Check clipping and overflow
-      if (cur_depth <= this->depthCam->NearClip() || cur_depth >= this->depthCam->FarClip() || cur_depth > DEPTH_SCALE_M * UINT16_MAX || cur_depth < 0) {
+      if (cur_depth <= this->depthCam->NearClip() || cur_depth >= this->maxRange || cur_depth > DEPTH_SCALE_M * UINT16_MAX || cur_depth < 0) {
         this->depthMap[i] = 0;
       } else {
         this->depthMap[i] = (cur_depth) / DEPTH_SCALE_M;
@@ -372,7 +373,7 @@ public:
       const float cur_depth = depthDataFloat[i];
 
       // Check clipping and overflow
-      if (cur_depth <= this->depthCam->NearClip() || cur_depth >= this->depthCam->FarClip() || cur_depth > DEPTH_SCALE_M * UINT16_MAX || cur_depth < 0 ||
+      if (cur_depth <= this->depthCam->NearClip() || cur_depth >= this->maxRange || cur_depth > DEPTH_SCALE_M * UINT16_MAX || cur_depth < 0 ||
           this->perlinNoise.noise(x_rel, y_rel, cur_z) > this->perlinEmptyThreshold) {
         this->depthMapSmall[i] = 0;
       } else {
@@ -453,6 +454,7 @@ protected:
   float                      perlinEmptyThreshold;
   unsigned                   blurSize;
   unsigned                   erosionSize;
+  float                      maxRange;
   PerlinNoise                perlinNoise;
   std::default_random_engine rand_gen;
   /* std::uniform_int_distribution<unsigned int> rand_dist; */
