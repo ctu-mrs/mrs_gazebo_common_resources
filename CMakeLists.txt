@@ -12,7 +12,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(USE_ROS_TIMER 0)
 
 if(${USE_ROS_TIMER})
-  MESSAGE(WARNING "[mrs_uav_managers]: Compiling with ROS Timers. This can cause high CPU load in runtime.")
+  MESSAGE(WARNING "[mrs_gazebo_common_resources]: Compiling with ROS Timers. This can cause high CPU load in runtime.")
 endif()
 
 # set the compile options to show code warnings
@@ -78,7 +78,6 @@ target_link_libraries(MrsGazeboCommonResources_MulticopterMotorModel
   gz-sim${GZ_VERSION}
   gz-plugin2::register
 )
-
 
 ## --------------------------------------------------------------
 ## |                           Install                          |
