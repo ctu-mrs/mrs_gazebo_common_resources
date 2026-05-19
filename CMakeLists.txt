@@ -116,7 +116,7 @@ ament_target_dependencies(MrsGazeboCommonResources_MulticopterMotorModel
 
 install(
   TARGETS MrsGazeboCommonResources_MulticopterMotorModel
-  LIBRARY DESTINATION lib/${PROJECT_NAME}
+  LIBRARY DESTINATION lib
 )
 
 ament_export_dependencies(
