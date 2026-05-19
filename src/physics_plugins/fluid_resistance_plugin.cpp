@@ -252,9 +252,9 @@ void FluidResistancePlugin::ApplyResistance() {
   math::Vector3 force, torque;
 #endif
 
-  force.X(-1.0 * (res_x * model_mass) * now_lin_vel.X());
-  force.Y(-1.0 * (res_y * model_mass) * now_lin_vel.Y());
-  force.Z(-1.0 * (res_z * model_mass) * now_lin_vel.Z());
+  force.X(-1.0 * res_x * now_lin_vel.X());
+  force.Y(-1.0 * res_y * now_lin_vel.Y());
+  force.Z(-1.0 * res_z * now_lin_vel.Z());
 
   // Applying force to uav
   link_to_apply_resistance->AddRelativeForce(force);
