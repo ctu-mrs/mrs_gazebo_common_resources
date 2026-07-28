@@ -253,7 +253,7 @@ void LivoxPointsPlugin::Load(gazebo::sensors::SensorPtr _parent, sdf::ElementPtr
     ignition::math::Quaterniond ray;
     ray.Euler(ignition::math::Vector3d(0.0, rotate_info.zenith, rotate_info.azimuth));
     auto axis   = offset.Rot() * ray * ignition::math::Vector3d(1.0, 0.0, 0.0);
-_    // To avoid the start inside the aircraft's own collision geometry.
+    // To avoid the start inside the aircraft's own collision geometry.
     start_point = minDist * axis + offset.Pos();
     end_point   = maxDist * axis + offset.Pos();
     rayShape->AddRay(start_point, end_point);
