@@ -10,6 +10,7 @@ This package contains common gazebo files (worlds, models and plugins) for the [
 
 - [forest.sdf](worlds/forest.sdf)
 - [grass_plane.sdf](worlds/grass_plane.sdf)
+- [grass_plane_ardupilot.sdf](worlds/grass_plane_ardupilot) - simulation world with 1ms physics time-step
 
 ## Models
 
@@ -19,3 +20,4 @@ This package contains common gazebo files (worlds, models and plugins) for the [
 ## Plugins
 
 - mrs_multicopter_motor_model - is a Gazebo plugin designed to provide a realistic simulation of multicopter motor behavior
+- ardupilot_propeller_plugin - is a Gazebo plugin providing motor simulation and control handle for Ardupilot Gazebo plugin with MRS system
