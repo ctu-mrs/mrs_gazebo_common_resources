@@ -1,0 +1,53 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="default">
+
+    <!-- 
+    IMPORTANT: PLUGIN BEHAVIOR IN GAZEBO
+    This simulation world inherits plugins from a default config file
+    located in mrs_uav_gazebo_simulation/config/gazebo_server.config.
+    If you add any plugins here, it will override the default
+    configuration, so be sure to include all necessary plugins here.
+    -->
+
+    <!-- Geographic coordinates for the world origin {-->
+    <spherical_coordinates>
+      <surface_model>EARTH_WGS84</surface_model>
+      <latitude_deg>47.397743</latitude_deg>
+      <longitude_deg>8.545594</longitude_deg>
+      <elevation>340.0</elevation>
+      <heading_deg>0</heading_deg>
+    </spherical_coordinates>
+    <!--}-->
+
+    <!-- Configuring the sun as a directional light source {-->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+    <!--}-->
+
+    <!-- Static ground plane {-->
+    <include>
+      <uri>model://mrs_gazebo_common_resources/models/grass_plane</uri>
+      <name>grass_plane</name>
+      <pose>0 0 0 0 0 0</pose>
+    </include>
+    <!--}-->
+
+    <physics name='default_physics' type="ignore">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+  </world>
+</sdf>

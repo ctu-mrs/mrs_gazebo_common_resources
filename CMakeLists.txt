@@ -54,6 +54,7 @@ foreach(DEP IN LISTS DEPENDENCIES)
 endforeach()
 
 find_package(gz-plugin2 REQUIRED COMPONENTS register)
+find_package(gz-math7 REQUIRED)
 
 include_directories(
   include
@@ -76,6 +77,20 @@ ament_target_dependencies(MrsGazeboCommonResources_MulticopterMotorModel
 
 target_link_libraries(MrsGazeboCommonResources_MulticopterMotorModel
   gz-sim${GZ_VERSION}
+  gz-plugin2::register
+)
+
+# Parametric propeller thrust/reaction model for the ArduPilot SITL backend.
+# The library is deliberately named `ArduPilotPropeller` (no MrsGazebo prefix):
+# gz-sim resolves SDF `<plugin filename="...">` by the exact module name, and
+# the MRS drone SDF templates reference this plugin as filename="ArduPilotPropeller".
+add_library(ArduPilotPropeller SHARED
+  src/ardupilot_propeller_plugin.cpp
+)
+
+target_link_libraries(ArduPilotPropeller PRIVATE
+  gz-sim${GZ_VERSION}::gz-sim${GZ_VERSION}
+  gz-math7::gz-math7
   gz-plugin2::register
 )
 
@@ -110,13 +125,16 @@ ament_export_libraries(
   MrsGazeboCommonResources_MulticopterMotorModel
 )
 
-ament_target_dependencies(MrsGazeboCommonResources_MulticopterMotorModel
-  rclcpp
-)
-
 install(
   TARGETS MrsGazeboCommonResources_MulticopterMotorModel
   LIBRARY DESTINATION lib
+)
+
+# ArduPilotPropeller must land in lib/<pkg-name> alongside the other gz system
+# plugins so the GZ_SIM_SYSTEM_PLUGIN_PATH environment hook finds it.
+install(
+  TARGETS ArduPilotPropeller
+  LIBRARY DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_export_dependencies(
