@@ -25,6 +25,7 @@
 
 #include "mrs_gazebo_common_resources/mrs_multicopter_motor_model.hpp"
 
+#include <algorithm>
 #include <mutex>
 #include <string>
 
@@ -187,6 +188,12 @@ public:
   /// and is approximately 8000 revolutions / minute (rpm).
 public:
   double maxRotVelocity = 838.0;
+
+  /// \brief Rotational velocity offset with units of rad/s, added to the
+  /// command whenever the motor spins: omega = throttle * maxRotVelocity + offset.
+  /// Lets the model reproduce an affine throttle -> sqrt(thrust) mapping.
+public:
+  double rotVelocityOffset = 0.0;
 
   /// \brief Moment constant for computing drag torque based on thrust
   /// with units of length (m).
@@ -353,6 +360,7 @@ void MrsMulticopterMotorModel::Configure(const Entity &_entity, const std::share
   sdfClone->Get<double>("rotorDragCoefficient", this->dataPtr->rotorDragCoefficient, this->dataPtr->rotorDragCoefficient);
   sdfClone->Get<double>("rollingMomentCoefficient", this->dataPtr->rollingMomentCoefficient, this->dataPtr->rollingMomentCoefficient);
   sdfClone->Get<double>("maxRotVelocity", this->dataPtr->maxRotVelocity, this->dataPtr->maxRotVelocity);
+  sdfClone->Get<double>("rotVelocityOffset", this->dataPtr->rotVelocityOffset, this->dataPtr->rotVelocityOffset);
   sdfClone->Get<double>("motorConstant", this->dataPtr->motorConstant, this->dataPtr->motorConstant);
   sdfClone->Get<double>("momentConstant", this->dataPtr->momentConstant, this->dataPtr->momentConstant);
 
@@ -575,7 +583,10 @@ void MrsMulticopterMotorModelPrivate::UpdateForcesAndMoments(EntityComponentMana
     msgs::Set(parentWrenchComp->Data().mutable_torque(), msgs::Convert(parentWrenchComp->Data().torque()) + parentWorldTorque);
   }
 
-  double refMotorRotVel = this->throttleInput * this->maxRotVelocity;
+  double refMotorRotVel = 0.0;
+  if (this->throttleInput > 0.0) {
+    refMotorRotVel = std::max(0.0, this->throttleInput * this->maxRotVelocity + this->rotVelocityOffset);
+  }
 
   /* double refMotorRotVel; */
   /* if (this->throttleInput < this->minThrottleToSpin) { */
