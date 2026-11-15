@@ -42,10 +42,13 @@ set(DEPENDENCIES
   gz-sim${GZ_VERSION}
   ros_gz_sim
   std_msgs
+  std_srvs
   geometry_msgs
+  mrs_msgs
   tf2
   tf2_msgs
   tf2_ros
+  tf2_geometry_msgs
   Eigen3
 )
 
@@ -79,6 +82,25 @@ target_link_libraries(MrsGazeboCommonResources_MulticopterMotorModel
   gz-plugin2::register
 )
 
+add_library(MrsGazeboCommonResources_ServoCameraPlugin SHARED
+  src/servo_camera_plugin.cpp
+)
+
+ament_target_dependencies(MrsGazeboCommonResources_ServoCameraPlugin
+  rclcpp
+  std_msgs
+  std_srvs
+  geometry_msgs
+  mrs_msgs
+  tf2_ros
+  tf2_geometry_msgs
+)
+
+target_link_libraries(MrsGazeboCommonResources_ServoCameraPlugin
+  gz-sim${GZ_VERSION}
+  gz-plugin2::register
+)
+
 ## --------------------------------------------------------------
 ## |                           Install                          |
 ## --------------------------------------------------------------
@@ -108,6 +130,7 @@ ament_export_include_directories(
 
 ament_export_libraries(
   MrsGazeboCommonResources_MulticopterMotorModel
+  MrsGazeboCommonResources_ServoCameraPlugin
 )
 
 ament_target_dependencies(MrsGazeboCommonResources_MulticopterMotorModel
@@ -115,7 +138,7 @@ ament_target_dependencies(MrsGazeboCommonResources_MulticopterMotorModel
 )
 
 install(
-  TARGETS MrsGazeboCommonResources_MulticopterMotorModel
+  TARGETS MrsGazeboCommonResources_MulticopterMotorModel MrsGazeboCommonResources_ServoCameraPlugin
   LIBRARY DESTINATION lib
 )
 
